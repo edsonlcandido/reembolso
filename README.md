@@ -1,8 +1,59 @@
-# PocketBase + Vue 3 + TypeScript + Tailwind CSS Template
+# Sistema de Reembolso Inteligente com IA
 
-Template completo para projetos com PocketBase + Vue 3 + TypeScript + Tailwind CSS em arquitetura monorepo.
+Sistema completo de gestão de reembolso de despesas com OCR automático via IA, construído com PocketBase + Vue 3 + TypeScript + Tailwind CSS.
 
-## 🚀 Características
+> 💡 **Destaque:** Upload de cupons fiscais com extração automática de dados usando GPT-4 Vision API
+
+## 📖 Documentação Completa
+
+**➡️ [Acesse a documentação completa em `/docs`](./docs/README.md)**
+
+- **[PRD.md](./docs/PRD.md)** - Product Requirements Document completo
+- **[IMPLEMENTATION.md](./docs/IMPLEMENTATION.md)** - Guia de implementação técnica
+- **[API.md](./docs/API.md)** - Documentação da API REST
+
+## ✨ Funcionalidades Principais
+
+### 🤖 OCR Inteligente com IA
+- Upload de fotos de cupons fiscais via câmera ou galeria
+- Extração automática de dados usando GPT-4 Vision:
+  - Valor total
+  - Data e hora da compra
+  - Nome do estabelecimento
+  - Categoria sugerida
+  - Itens do cupom
+- Revisão e correção manual dos dados extraídos
+- Processamento assíncrono com feedback em tempo real
+
+### 🏢 Gestão Multi-empresa
+- Suporte para múltiplas empresas independentes
+- Configurações personalizadas por empresa
+- Centros de custo e projetos
+- Categorias de despesas customizáveis
+- Gestão de usuários e permissões por empresa
+
+### 📊 Relatórios de Despesas
+- Criação rápida de relatórios de reembolso
+- Agrupamento de despesas por período
+- Anexo de múltiplos cupons por relatório
+- Cálculo automático de totais
+- Rastreamento de status (Rascunho → Enviado → Aprovado → Pago)
+
+### ✅ Fluxo de Aprovação
+- Dashboard para aprovadores
+- Aprovação/rejeição com justificativa
+- Múltiplos níveis de aprovação
+- Notificações por email
+- Histórico completo de ações
+
+### 🔐 Segurança e Compliance
+- Autenticação robusta (JWT)
+- Controle de acesso baseado em roles
+- Auditoria completa de ações
+- Criptografia de dados
+- Conformidade com LGPD
+
+## 🚀 Características Técnicas
 
 - **Monorepo** com workspaces (Landing Page + Web App)
 - **PocketBase** como backend (autenticação, database, API RESTful)
@@ -53,6 +104,12 @@ pocketbase-vue-tailwind-template/
 │   ├── pb_migrations/        # Migrations do banco
 │   ├── pb_data/              # Dados do PocketBase (gitignored)
 │   └── pb_public/            # Arquivos públicos servidos
+│
+├── docs/                     # 📖 Documentação completa
+│   ├── README.md            # Índice da documentação
+│   ├── PRD.md               # Product Requirements Document
+│   ├── IMPLEMENTATION.md    # Guia de implementação
+│   └── API.md               # Documentação da API
 │
 ├── scripts/
 │   ├── pocketbase.js         # Script para baixar/rodar PocketBase
