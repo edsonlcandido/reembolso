@@ -20,8 +20,9 @@ export default defineConfig(({ mode }) => {
     plugins: [vue()],
     base: '/app/',
     server: {
-      // Proxy dinâmico - usa VITE_POCKETBASE_URL ou fallback para localhost
-      // Redireciona requisições /api e /_ para o PocketBase
+      host: 'localhost',
+      port: 5174,
+      allowedHosts: 'all',
       proxy: {
         '/api': {
           target: pbUrl,
