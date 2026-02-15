@@ -73,7 +73,7 @@ export default defineConfig({
       '/app': {
         target: 'http://localhost:5174',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/app/, '/app')
+        ws: true
       }
     }
   }

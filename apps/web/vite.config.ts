@@ -20,7 +20,7 @@ export default defineConfig(({ mode }) => {
     plugins: [vue()],
     base: '/app/',
     server: {
-      host: 'localhost',
+      host: '127.0.0.1',
       port: 5174,
       allowedHosts: true,
       proxy: {
