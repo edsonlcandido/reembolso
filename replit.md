@@ -42,5 +42,22 @@ This is a monorepo with three components:
 - Landing page proxies `/api` and `/_` to PocketBase, `/app` to web app
 - Web app proxies `/api` and `/_` to PocketBase
 
+## Database Collections
+PocketBase collections created via migrations:
+- **users** (auth): Extended with name, avatar fields
+- **companies**: Company management (name, cnpj, email, phone, logo, settings)
+- **company_users**: User-company relationship (role: admin/approver/employee)
+- **approvers**: Approval workflow (level, max_amount, delegates_to)
+- **expense_reports**: Expense reports (title, period, status, total_amount)
+- **expense_items**: Individual expenses (amount, category, receipt_image, OCR data)
+- **categories**: Custom expense categories per company
+- **audit_logs**: Complete audit trail
+
+## Superuser
+- Email: edsonluizcandido+admin@gmail.com
+
 ## Recent Changes
+- Created PocketBase migrations for all PRD collections
+- Created superuser admin account
+- Fixed IPv4/IPv6 proxy issue (web app host: 127.0.0.1)
 - Configured for Replit environment (ports, hosts, proxy settings)
