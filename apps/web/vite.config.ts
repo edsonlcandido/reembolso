@@ -22,7 +22,7 @@ export default defineConfig(({ mode }) => {
     server: {
       host: 'localhost',
       port: 5174,
-      allowedHosts: 'all',
+      allowedHosts: true,
       proxy: {
         '/api': {
           target: pbUrl,
