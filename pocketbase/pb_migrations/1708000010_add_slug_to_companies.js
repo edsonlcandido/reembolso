@@ -4,13 +4,13 @@ migrate((app) => {
   const collection = app.findCollectionByNameOrId("companies")
   
   // Add slug field
-  collection.fields.addAt(2, {
+  collection.fields.addAt(2, new Field({
     name: "slug",
     type: "text",
     required: true,
     max: 100,
     pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$"
-  })
+  }))
 
   // Add unique index for slug
   collection.indexes.push(
@@ -24,7 +24,7 @@ migrate((app) => {
   // Remove slug field
   const slugField = collection.fields.find(f => f.name === "slug")
   if (slugField) {
-    collection.fields.remove(slugField.id)
+    collection.fields.removeById(slugField.id)
   }
 
   // Remove unique index
