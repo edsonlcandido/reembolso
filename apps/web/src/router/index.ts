@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import pb from '../services/pocketbase'
 import LoginView from '../views/LoginView.vue'
 import DashboardView from '../views/DashboardView.vue'
+import ProfileView from '../views/ProfileView.vue'
 
 const router = createRouter({
   history: createWebHistory('/app/'),
@@ -22,19 +23,22 @@ const router = createRouter({
       component: DashboardView,
       meta: { requiresAuth: true },
     },
+    {
+      path: '/profile',
+      name: 'profile',
+      component: ProfileView,
+      meta: { requiresAuth: true },
+    },
   ],
 })
 
-// Navigation guard - verifica a autenticação com o servidor
 router.beforeEach(async (to, _from, next) => {
   let isAuthenticated = pb.authStore.isValid && !!pb.authStore.model
 
-  // Para rotas que requerem autenticação, verifica com o servidor
   if (to.meta.requiresAuth && isAuthenticated) {
     try {
       await pb.collection('users').authRefresh()
     } catch (error) {
-      // Token inválido ou usuário não existe mais
       pb.authStore.clear()
       isAuthenticated = false
     }

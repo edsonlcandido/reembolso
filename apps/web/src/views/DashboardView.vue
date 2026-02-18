@@ -10,12 +10,15 @@
             </h1>
           </div>
           <div class="flex items-center gap-4">
-            <div class="flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 rounded-full">
+            <router-link
+              to="/profile"
+              class="flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 rounded-full hover:from-blue-100 hover:to-purple-100 transition-all cursor-pointer"
+            >
               <div class="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
                 <UserCircleIcon class="h-5 w-5 text-white" />
               </div>
               <span class="text-sm font-semibold text-gray-700">{{ userName }}</span>
-            </div>
+            </router-link>
             <button
               @click="handleLogout"
               class="group inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all transform hover:scale-105 shadow-lg"
