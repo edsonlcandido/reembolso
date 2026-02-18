@@ -282,9 +282,16 @@ async function loadDashboard() {
 
     if (companyStore.currentCompany) {
       const companyId = companyStore.currentCompany.id
+      const isAdmin = companyStore.currentUserRole === 'admin' || companyStore.currentUserRole === 'approver'
+      const userId = pb.authStore.record?.id
+
+      let filter = `company="${companyId}"`
+      if (!isAdmin && userId) {
+        filter += ` && user="${userId}"`
+      }
 
       const allReports = await pb.collection('expense_reports').getList(1, 50, {
-        filter: `company="${companyId}"`,
+        filter,
         sort: '-id',
       })
 

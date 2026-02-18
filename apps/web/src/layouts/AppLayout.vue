@@ -80,6 +80,7 @@
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useCompanyStore } from '../stores/company'
 import {
   HomeIcon,
   DocumentTextIcon,
@@ -93,6 +94,7 @@ import { Bars3Icon, UserCircleIcon, ArrowRightOnRectangleIcon } from '@heroicons
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const companyStore = useCompanyStore()
 
 const sidebarOpen = ref(false)
 
@@ -114,6 +116,7 @@ function isActive(path: string): boolean {
 }
 
 function handleLogout() {
+  companyStore.clearState()
   authStore.logout()
   router.push('/login')
 }

@@ -6,6 +6,8 @@ import type { RecordModel } from 'pocketbase'
 export const useCompanyStore = defineStore('company', () => {
   const currentCompany = ref<RecordModel | null>(null)
   const companies = ref<RecordModel[]>([])
+  const companyMemberships = ref<RecordModel[]>([])
+  const currentUserRole = ref<string>('employee')
   const members = ref<RecordModel[]>([])
   const loading = ref(false)
 
@@ -16,9 +18,12 @@ export const useCompanyStore = defineStore('company', () => {
         filter: `user="${pb.authStore.record?.id}"`,
         expand: 'company',
       })
+      companyMemberships.value = records
       companies.value = records.map((r) => r.expand?.company).filter(Boolean) as RecordModel[]
       if (companies.value.length > 0 && !currentCompany.value) {
         currentCompany.value = companies.value[0]
+        const membership = records.find(r => r.expand?.company?.id === companies.value[0].id)
+        currentUserRole.value = membership?.role || 'employee'
       }
       return { success: true }
     } catch (error: any) {
@@ -28,8 +33,22 @@ export const useCompanyStore = defineStore('company', () => {
     }
   }
 
+  function clearState() {
+    currentCompany.value = null
+    companies.value = []
+    companyMemberships.value = []
+    currentUserRole.value = 'employee'
+    members.value = []
+  }
+
   function setCurrentCompany(company: RecordModel | null) {
     currentCompany.value = company
+    if (company) {
+      const membership = companyMemberships.value.find(r => r.expand?.company?.id === company.id)
+      currentUserRole.value = membership?.role || 'employee'
+    } else {
+      currentUserRole.value = 'employee'
+    }
   }
 
   async function createCompany(data: { name: string; cnpj?: string; email?: string; phone?: string; address?: string }) {
@@ -135,10 +154,12 @@ export const useCompanyStore = defineStore('company', () => {
   return {
     currentCompany,
     companies,
+    currentUserRole,
     members,
     loading,
     fetchMyCompanies,
     setCurrentCompany,
+    clearState,
     createCompany,
     updateCompany,
     fetchMembers,

@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import pb from '../services/pocketbase'
 import type { RecordModel } from 'pocketbase'
+import { useCompanyStore } from './company'
 
 function translateError(error: any): string {
   const msg = error?.message || ''
@@ -76,6 +77,10 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function logout() {
+    try {
+      const companyStore = useCompanyStore()
+      companyStore.clearState()
+    } catch (e) {}
     pb.authStore.clear()
     user.value = null
     token.value = ''

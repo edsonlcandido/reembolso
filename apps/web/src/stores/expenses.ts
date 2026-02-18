@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import pb from '../services/pocketbase'
 import type { RecordModel } from 'pocketbase'
+import { useCompanyStore } from './company'
 
 export const useExpensesStore = defineStore('expenses', () => {
   const reports = ref<RecordModel[]>([])
@@ -9,10 +10,18 @@ export const useExpensesStore = defineStore('expenses', () => {
   const items = ref<RecordModel[]>([])
   const loading = ref(false)
 
+  function isAdminOrApprover(): boolean {
+    const companyStore = useCompanyStore()
+    return companyStore.currentUserRole === 'admin' || companyStore.currentUserRole === 'approver'
+  }
+
   async function fetchReports(companyId: string, filters?: { status?: string }) {
     loading.value = true
     try {
       let filter = `company="${companyId}"`
+      if (!isAdminOrApprover()) {
+        filter += ` && user="${pb.authStore.record?.id}"`
+      }
       if (filters?.status) {
         filter += ` && status="${filters.status}"`
       }
@@ -30,29 +39,15 @@ export const useExpensesStore = defineStore('expenses', () => {
     }
   }
 
-  async function fetchMyReports(companyId: string) {
-    loading.value = true
-    try {
-      const records = await pb.collection('expense_reports').getFullList({
-        filter: `company="${companyId}" && user="${pb.authStore.record?.id}"`,
-        sort: '-id',
-        expand: 'user',
-      })
-      reports.value = records
-      return { success: true, data: records }
-    } catch (error: any) {
-      return { success: false, error: error?.message || 'Erro ao buscar seus relatórios.' }
-    } finally {
-      loading.value = false
-    }
-  }
-
   async function getReport(id: string) {
     loading.value = true
     try {
       const record = await pb.collection('expense_reports').getOne(id, {
         expand: 'user',
       })
+      if (!isAdminOrApprover() && record.user !== pb.authStore.record?.id) {
+        return { success: false, error: 'Você não tem permissão para acessar este relatório.' }
+      }
       currentReport.value = record
       return { success: true, data: record }
     } catch (error: any) {
@@ -233,7 +228,6 @@ export const useExpensesStore = defineStore('expenses', () => {
     items,
     loading,
     fetchReports,
-    fetchMyReports,
     getReport,
     createReport,
     updateReport,

@@ -108,9 +108,11 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useCompanyStore } from '../stores/company'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const companyStore = useCompanyStore()
 
 const successMessage = ref('')
 const errorMessage = ref('')
@@ -179,6 +181,7 @@ async function handleChangePassword() {
       successMessage.value = 'Senha alterada com sucesso! Faça login novamente.'
       passwordForm.value = { oldPassword: '', newPassword: '', newPasswordConfirm: '' }
       setTimeout(() => {
+        companyStore.clearState()
         authStore.logout()
         router.push('/login')
       }, 2000)

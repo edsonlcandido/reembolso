@@ -462,7 +462,12 @@ async function handleDeleteReport() {
 
 async function loadReport() {
   const id = route.params.id as string
-  await expensesStore.getReport(id)
+  const result = await expensesStore.getReport(id)
+  if (!result.success) {
+    alert(result.error || 'Erro ao carregar relatório.')
+    router.push('/reports')
+    return
+  }
   await expensesStore.fetchItems(id)
 }
 
