@@ -358,7 +358,7 @@ function processOCR(itemId, imageUrl) {
       
       // Atualiza o item com os dados extraídos
       const item = $app.findRecordById("expense_items", itemId)
-      item.set("amount", ocrData.valor_total)
+      item.set("amount", Math.round(ocrData.valor_total * 100))
       item.set("date", `${ocrData.data}T${ocrData.hora}:00Z`)
       item.set("merchant", ocrData.estabelecimento)
       item.set("category", ocrData.categoria)

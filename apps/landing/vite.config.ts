@@ -58,9 +58,9 @@ export default defineConfig({
     cssMinify: true
   },
   server: {
-    port: 5173,
-    // Proxy para desenvolvimento local
-    // Redireciona requisições para os serviços corretos
+    host: '0.0.0.0',
+    port: 5000,
+    allowedHosts: true,
     proxy: {
       '/api': {
         target: 'http://localhost:8090',
@@ -73,7 +73,7 @@ export default defineConfig({
       '/app': {
         target: 'http://localhost:5174',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/app/, '/app')
+        ws: true
       }
     }
   }

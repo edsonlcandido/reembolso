@@ -2,33 +2,59 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import pb from '../services/pocketbase'
 import type { RecordModel } from 'pocketbase'
+import { useCompanyStore } from './company'
+
+function translateError(error: any): string {
+  const msg = error?.message || ''
+  const data = error?.data || error?.response?.data || {}
+
+  if (msg.includes('Failed to authenticate') || msg.includes('invalid credentials')) {
+    return 'E-mail ou senha incorretos.'
+  }
+  if (msg.includes('Failed to create record')) {
+    if (data?.email?.code === 'validation_not_unique') {
+      return 'Este e-mail já está cadastrado.'
+    }
+    if (data?.email?.code === 'validation_invalid_email') {
+      return 'E-mail inválido.'
+    }
+    if (data?.password?.code === 'validation_length_out_of_range') {
+      return 'A senha deve ter pelo menos 8 caracteres.'
+    }
+    if (data?.passwordConfirm?.code === 'validation_values_mismatch') {
+      return 'As senhas não coincidem.'
+    }
+    return 'Erro ao criar conta. Verifique os dados informados.'
+  }
+  if (msg.includes('network') || msg.includes('fetch')) {
+    return 'Erro de conexão. Verifique sua internet e tente novamente.'
+  }
+
+  return msg || 'Ocorreu um erro inesperado. Tente novamente.'
+}
 
 export const useAuthStore = defineStore('auth', () => {
-  const user = ref<RecordModel | null>(pb.authStore.model)
+  const user = ref<RecordModel | null>(pb.authStore.record)
   const token = ref<string>(pb.authStore.token)
 
   const isLoggedIn = computed(() => pb.authStore.isValid && !!user.value)
 
-  // Sincronizar com o authStore do PocketBase
-  pb.authStore.onChange((newToken, newModel) => {
+  pb.authStore.onChange((newToken, newRecord) => {
     token.value = newToken
-    user.value = newModel
+    user.value = newRecord
   })
 
-  // Verifica se o token ainda é válido no servidor
   async function verifyAuth(): Promise<boolean> {
-    if (!pb.authStore.isValid || !pb.authStore.model) {
+    if (!pb.authStore.isValid || !pb.authStore.record) {
       return false
     }
 
     try {
-      // Tenta atualizar o token - isso falhará se o usuário não existir mais
       await pb.collection('users').authRefresh()
-      user.value = pb.authStore.model
+      user.value = pb.authStore.record
       token.value = pb.authStore.token
       return true
     } catch (error) {
-      // Token inválido ou usuário não existe mais - limpa a sessão
       pb.authStore.clear()
       user.value = null
       token.value = ''
@@ -43,14 +69,18 @@ export const useAuthStore = defineStore('auth', () => {
       token.value = pb.authStore.token
       return { success: true }
     } catch (error: any) {
-      return { 
-        success: false, 
-        error: error?.message || 'Falha ao fazer login'
+      return {
+        success: false,
+        error: translateError(error)
       }
     }
   }
 
   function logout() {
+    try {
+      const companyStore = useCompanyStore()
+      companyStore.clearState()
+    } catch (e) {}
     pb.authStore.clear()
     user.value = null
     token.value = ''
@@ -64,15 +94,62 @@ export const useAuthStore = defineStore('auth', () => {
         passwordConfirm,
         name: name || email.split('@')[0],
       }
-      
+
       await pb.collection('users').create(data)
-      
-      // Após criar, fazer login automaticamente
       return await login(email, password)
     } catch (error: any) {
-      return { 
-        success: false, 
-        error: error?.message || 'Falha ao registrar'
+      return {
+        success: false,
+        error: translateError(error)
+      }
+    }
+  }
+
+  async function requestPasswordReset(email: string) {
+    try {
+      await pb.collection('users').requestPasswordReset(email)
+      return { success: true }
+    } catch (error: any) {
+      return {
+        success: false,
+        error: translateError(error)
+      }
+    }
+  }
+
+  async function updateProfile(data: { name?: string; avatar?: File }) {
+    if (!user.value) return { success: false, error: 'Usuário não autenticado.' }
+
+    try {
+      const formData = new FormData()
+      if (data.name !== undefined) formData.append('name', data.name)
+      if (data.avatar) formData.append('avatar', data.avatar)
+
+      const updated = await pb.collection('users').update(user.value.id, formData)
+      user.value = updated
+      return { success: true }
+    } catch (error: any) {
+      return {
+        success: false,
+        error: translateError(error)
+      }
+    }
+  }
+
+  async function changePassword(oldPassword: string, newPassword: string, newPasswordConfirm: string) {
+    if (!user.value) return { success: false, error: 'Usuário não autenticado.' }
+
+    try {
+      await pb.collection('users').update(user.value.id, {
+        oldPassword,
+        password: newPassword,
+        passwordConfirm: newPasswordConfirm,
+      })
+      return { success: true }
+    } catch (error: any) {
+      return {
+        success: false,
+        error: translateError(error)
       }
     }
   }
@@ -85,5 +162,8 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     logout,
     register,
+    requestPasswordReset,
+    updateProfile,
+    changePassword,
   }
 })

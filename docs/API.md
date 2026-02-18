@@ -12,10 +12,25 @@ Esta documentação descreve os endpoints da API do sistema de reembolso, constr
 Todos os endpoints protegidos requerem autenticação via JWT token no header:
 
 ```
-Authorization: Bearer <token>
+Authorization: YOUR_AUTH_TOKEN
 ```
 
-O token é obtido após login bem-sucedido e armazenado automaticamente pelo PocketBase Client.
+O token é obtido após login bem-sucedido e enviado diretamente no header (sem prefixo "Bearer"). O PocketBase Client gerencia isso automaticamente.
+
+---
+
+## Convenção de Valores Monetários
+
+Todos os valores monetários na API são armazenados e transmitidos em **centavos (integer)**. Isso evita problemas de arredondamento com números de ponto flutuante.
+
+| Valor Real (R$) | Valor na API (centavos) |
+|------------------|------------------------|
+| R$ 1,00          | 100                    |
+| R$ 85,50         | 8550                   |
+| R$ 2.450,00      | 245000                 |
+| R$ 10.000,00     | 1000000                |
+
+Para exibir ao usuário, divida o valor por 100. Para enviar à API, multiplique por 100.
 
 ---
 
@@ -85,7 +100,7 @@ POST /api/collections/users/auth-refresh
 
 **Headers:**
 ```
-Authorization: Bearer <token>
+Authorization: YOUR_AUTH_TOKEN
 ```
 
 **Response (200 OK):**
@@ -143,7 +158,7 @@ GET /api/collections/companies/records
       "logo": "comp123/logo_abc.png",
       "currency": "BRL",
       "settings": {
-        "max_report_value": 5000,
+        "max_report_value": 500000,
         "approval_levels": 2
       },
       "active": true,
@@ -193,7 +208,7 @@ PATCH /api/collections/companies/records/:id
 {
   "name": "Nova Empresa LTDA - Filial",
   "settings": {
-    "max_report_value": 10000
+    "max_report_value": 1000000
   }
 }
 ```
@@ -302,7 +317,7 @@ GET /api/collections/approvers/records
       "company": "comp123",
       "user": "user789",
       "level": 1,
-      "max_amount": 5000,
+      "max_amount": 500000,
       "delegates_to": null,
       "active": true,
       "expand": {
@@ -327,7 +342,7 @@ POST /api/collections/approvers/records
   "company": "comp123",
   "user": "user789",
   "level": 1,
-  "max_amount": 10000,
+  "max_amount": 1000000,
   "active": true
 }
 ```
@@ -360,7 +375,7 @@ GET /api/collections/expense_reports/records
       "cost_center": "Vendas",
       "project": "Projeto Alpha",
       "description": "Despesas da viagem de vendas",
-      "total_amount": 2450.00,
+      "total_amount": 245000,
       "status": "submitted",
       "submitted_at": "2026-01-21 10:00:00.000Z",
       "approved_by": null,
@@ -465,12 +480,12 @@ GET /api/collections/expense_items/records
       "report": "rep123",
       "date": "2026-01-15T12:30:00Z",
       "category": "food",
-      "amount": 85.50,
+      "amount": 8550,
       "description": "Almoço com cliente",
       "receipt_image": "item123/receipt_xyz.jpg",
       "merchant": "Restaurante Sabor",
       "ocr_data": {
-        "valor_total": 85.50,
+        "valor_total": 8550,
         "data": "2026-01-15",
         "hora": "12:30",
         "estabelecimento": "Restaurante Sabor",
@@ -524,7 +539,7 @@ PATCH /api/collections/expense_items/records/:id
 **Body:**
 ```json
 {
-  "amount": 45.00,
+  "amount": 4500,
   "description": "Táxi - Aeroporto para Hotel",
   "merchant": "Táxi Premium"
 }
@@ -656,8 +671,8 @@ O PocketBase usa uma sintaxe de filtro específica:
 // Relatórios do usuário com status submitted
 filter=user='user123' && status='submitted'
 
-// Despesas acima de R$ 100
-filter=amount>100
+// Despesas acima de R$ 100 (10000 centavos)
+filter=amount>10000
 
 // Empresas ativas com nome contendo "tech"
 filter=active=true && name~'tech'
