@@ -56,7 +56,26 @@ PocketBase collections created via migrations:
 ## Superuser
 - Email: edsonluizcandido+admin@gmail.com
 
+## App Views & Components
+- **AppLayout**: Shared layout with collapsible sidebar + top navbar for all authenticated routes
+- **Stores**: auth (login/register/profile), company (CRUD + members), expenses (reports + items)
+- **Views**: Dashboard, CompanySetup, CompanyMembers, ExpenseReports, ExpenseReportDetail, CreateExpenseReport, Categories, Profile, Login, Register, ForgotPassword
+- **Router**: Nested routes with AppLayout as parent wrapper, meta-based auth guards
+
+## Design Conventions
+- All text in Brazilian Portuguese
+- Blue/purple gradient theme (bg-gradient-to-r from-blue-600 to-purple-600)
+- Monetary values stored as integer cents (R$1,00 = 100), formatted with formatCurrency()
+- Category enum: food, transport, lodging, supplies, other
+- Status workflow: draft → submitted → approved/rejected → paid
+
 ## Recent Changes
+- Implemented full company management (CRUD, member invitation, role assignment)
+- Built expense reports system (create reports, add items, status workflow)
+- Created Dashboard with real metrics from PocketBase
+- Added shared AppLayout with responsive sidebar navigation
+- Configured PocketBase API rules for authenticated users
+- Fixed category enum mismatch (material → supplies)
 - Created PocketBase migrations for all PRD collections
 - Created superuser admin account
 - Fixed IPv4/IPv6 proxy issue (web app host: 127.0.0.1)
