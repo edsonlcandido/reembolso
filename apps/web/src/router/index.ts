@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import pb from '../services/pocketbase'
 import LoginView from '../views/LoginView.vue'
+import CompanyAuthView from '../views/CompanyAuthView.vue'
 import AppLayout from '../layouts/AppLayout.vue'
 import DashboardView from '../views/DashboardView.vue'
 import ProfileView from '../views/ProfileView.vue'
@@ -22,6 +23,12 @@ const router = createRouter({
       path: '/login',
       name: 'login',
       component: LoginView,
+      meta: { requiresGuest: true },
+    },
+    {
+      path: '/company/:slug',
+      name: 'company-auth',
+      component: CompanyAuthView,
       meta: { requiresGuest: true },
     },
     {

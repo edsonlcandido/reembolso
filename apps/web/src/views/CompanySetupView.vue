@@ -27,7 +27,25 @@
             required
             class="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
             placeholder="Nome da empresa"
+            @input="handleNameChange"
           />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Slug *</label>
+          <input
+            v-model="form.slug"
+            type="text"
+            required
+            pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$"
+            class="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+            placeholder="slug-da-empresa"
+            @input="validateSlug"
+          />
+          <p class="mt-1 text-sm text-gray-500">
+            URL de acesso: /app/company/{{ form.slug || 'slug-da-empresa' }}
+          </p>
+          <p v-if="slugError" class="mt-1 text-sm text-red-500">{{ slugError }}</p>
         </div>
 
         <div>
@@ -114,9 +132,12 @@ const editId = ref('')
 const successMsg = ref('')
 const errorMsg = ref('')
 const emailError = ref('')
+const slugError = ref('')
+const slugManuallyEdited = ref(false)
 
 const form = ref({
   name: '',
+  slug: '',
   cnpj: '',
   email: '',
   phone: '',
@@ -139,6 +160,38 @@ function maskCnpj(e: Event) {
   form.value.cnpj = v
 }
 
+function generateSlug(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove accents
+    .replace(/[^a-z0-9\s-]/g, '') // Remove special chars
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/-+/g, '-') // Replace multiple hyphens with single
+    .replace(/^-|-$/g, '') // Remove leading/trailing hyphens
+}
+
+function handleNameChange() {
+  if (!slugManuallyEdited.value && !isEditing.value) {
+    form.value.slug = generateSlug(form.value.name)
+  }
+}
+
+function validateSlug() {
+  slugManuallyEdited.value = true
+  const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+  if (form.value.slug && !slugPattern.test(form.value.slug)) {
+    slugError.value = 'O slug deve conter apenas letras minúsculas, números e hífens'
+    return false
+  }
+  if (form.value.slug && form.value.slug.length < 3) {
+    slugError.value = 'O slug deve ter pelo menos 3 caracteres'
+    return false
+  }
+  slugError.value = ''
+  return true
+}
+
 function validateEmail(): boolean {
   if (form.value.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.value.email)) {
     emailError.value = 'Formato de e-mail inválido'
@@ -157,10 +210,17 @@ async function handleSubmit() {
     return
   }
 
+  if (!form.value.slug.trim()) {
+    errorMsg.value = 'O slug é obrigatório.'
+    return
+  }
+
+  if (!validateSlug()) return
   if (!validateEmail()) return
 
   const data = {
     name: form.value.name,
+    slug: form.value.slug,
     cnpj: form.value.cnpj || undefined,
     email: form.value.email || undefined,
     phone: form.value.phone || undefined,
@@ -186,10 +246,12 @@ onMounted(async () => {
   if (route.params.id) {
     isEditing.value = true
     editId.value = route.params.id as string
+    slugManuallyEdited.value = true // Don't auto-generate slug when editing
     await companyStore.fetchMyCompanies()
     const company = companyStore.companies.find(c => c.id === editId.value)
     if (company) {
       form.value.name = company.name || ''
+      form.value.slug = company.slug || ''
       form.value.cnpj = company.cnpj || ''
       form.value.email = company.email || ''
       form.value.phone = company.phone || ''
