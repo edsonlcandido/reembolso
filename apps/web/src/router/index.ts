@@ -5,6 +5,7 @@ import CompanyAuthView from '../views/CompanyAuthView.vue'
 import AppLayout from '../layouts/AppLayout.vue'
 import DashboardView from '../views/DashboardView.vue'
 import ProfileView from '../views/ProfileView.vue'
+import CompaniesListView from '../views/CompaniesListView.vue'
 import CompanySetupView from '../views/CompanySetupView.vue'
 import CompanyMembersView from '../views/CompanyMembersView.vue'
 import ExpenseReportsView from '../views/ExpenseReportsView.vue'
@@ -48,8 +49,8 @@ const router = createRouter({
         },
         {
           path: 'company',
-          name: 'company-setup',
-          component: CompanySetupView,
+          name: 'company-list',
+          component: CompaniesListView,
         },
         {
           path: 'company/edit/:id',
