@@ -12,10 +12,10 @@ Esta documentação descreve os endpoints da API do sistema de reembolso, constr
 Todos os endpoints protegidos requerem autenticação via JWT token no header:
 
 ```
-Authorization: Bearer <token>
+Authorization: YOUR_AUTH_TOKEN
 ```
 
-O token é obtido após login bem-sucedido e armazenado automaticamente pelo PocketBase Client.
+O token é obtido após login bem-sucedido e enviado diretamente no header (sem prefixo "Bearer"). O PocketBase Client gerencia isso automaticamente.
 
 ---
 
@@ -85,7 +85,7 @@ POST /api/collections/users/auth-refresh
 
 **Headers:**
 ```
-Authorization: Bearer <token>
+Authorization: YOUR_AUTH_TOKEN
 ```
 
 **Response (200 OK):**
