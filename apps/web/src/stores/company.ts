@@ -13,7 +13,7 @@ export const useCompanyStore = defineStore('company', () => {
     loading.value = true
     try {
       const records = await pb.collection('company_users').getFullList({
-        filter: `user="${pb.authStore.model?.id}"`,
+        filter: `user="${pb.authStore.record?.id}"`,
         expand: 'company',
       })
       companies.value = records.map((r) => r.expand?.company).filter(Boolean) as RecordModel[]
@@ -41,7 +41,7 @@ export const useCompanyStore = defineStore('company', () => {
       })
       await pb.collection('company_users').create({
         company: company.id,
-        user: pb.authStore.model?.id,
+        user: pb.authStore.record?.id,
         role: 'admin',
         active: true,
       })

@@ -285,7 +285,7 @@ async function loadDashboard() {
 
       const allReports = await pb.collection('expense_reports').getList(1, 50, {
         filter: `company="${companyId}"`,
-        sort: '-created',
+        sort: '-id',
       })
 
       recentReports.value = allReports.items.slice(0, 5)

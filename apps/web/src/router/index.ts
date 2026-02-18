@@ -80,7 +80,7 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to, _from, next) => {
-  let isAuthenticated = pb.authStore.isValid && !!pb.authStore.model
+  let isAuthenticated = pb.authStore.isValid && !!pb.authStore.record
 
   if (to.meta.requiresAuth && isAuthenticated) {
     try {

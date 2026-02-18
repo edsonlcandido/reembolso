@@ -153,7 +153,7 @@ const showConfirmModal = ref(false)
 const memberToRemove = ref<RecordModel | null>(null)
 
 function isCurrentUser(member: RecordModel): boolean {
-  return member.expand?.user?.id === pb.authStore.model?.id
+  return member.expand?.user?.id === pb.authStore.record?.id
 }
 
 function roleBadgeClass(role: string): string {

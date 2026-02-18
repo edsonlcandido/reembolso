@@ -18,7 +18,7 @@ export const useExpensesStore = defineStore('expenses', () => {
       }
       const records = await pb.collection('expense_reports').getFullList({
         filter,
-        sort: '-created',
+        sort: '-id',
         expand: 'user',
       })
       reports.value = records
@@ -34,8 +34,8 @@ export const useExpensesStore = defineStore('expenses', () => {
     loading.value = true
     try {
       const records = await pb.collection('expense_reports').getFullList({
-        filter: `company="${companyId}" && user="${pb.authStore.model?.id}"`,
-        sort: '-created',
+        filter: `company="${companyId}" && user="${pb.authStore.record?.id}"`,
+        sort: '-id',
         expand: 'user',
       })
       reports.value = records
@@ -67,7 +67,7 @@ export const useExpensesStore = defineStore('expenses', () => {
     try {
       const record = await pb.collection('expense_reports').create({
         ...data,
-        user: pb.authStore.model?.id,
+        user: pb.authStore.record?.id,
         status: 'draft',
         total_amount: 0,
       })
@@ -111,7 +111,7 @@ export const useExpensesStore = defineStore('expenses', () => {
     try {
       const record = await pb.collection('expense_reports').update(id, {
         status: 'approved',
-        approved_by: pb.authStore.model?.id,
+        approved_by: pb.authStore.record?.id,
         approved_at: new Date().toISOString(),
       })
       return { success: true, data: record }
@@ -128,7 +128,7 @@ export const useExpensesStore = defineStore('expenses', () => {
       const record = await pb.collection('expense_reports').update(id, {
         status: 'rejected',
         rejection_reason: reason,
-        approved_by: pb.authStore.model?.id,
+        approved_by: pb.authStore.record?.id,
         approved_at: new Date().toISOString(),
       })
       return { success: true, data: record }

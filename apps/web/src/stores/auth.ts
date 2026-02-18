@@ -33,24 +33,24 @@ function translateError(error: any): string {
 }
 
 export const useAuthStore = defineStore('auth', () => {
-  const user = ref<RecordModel | null>(pb.authStore.model)
+  const user = ref<RecordModel | null>(pb.authStore.record)
   const token = ref<string>(pb.authStore.token)
 
   const isLoggedIn = computed(() => pb.authStore.isValid && !!user.value)
 
-  pb.authStore.onChange((newToken, newModel) => {
+  pb.authStore.onChange((newToken, newRecord) => {
     token.value = newToken
-    user.value = newModel
+    user.value = newRecord
   })
 
   async function verifyAuth(): Promise<boolean> {
-    if (!pb.authStore.isValid || !pb.authStore.model) {
+    if (!pb.authStore.isValid || !pb.authStore.record) {
       return false
     }
 
     try {
       await pb.collection('users').authRefresh()
-      user.value = pb.authStore.model
+      user.value = pb.authStore.record
       token.value = pb.authStore.token
       return true
     } catch (error) {
