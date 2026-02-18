@@ -161,12 +161,10 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useCompanyStore } from '../stores/company'
 import pb from '../services/pocketbase'
 
 const route = useRoute()
 const router = useRouter()
-const companyStore = useCompanyStore()
 
 const slug = ref(route.params.slug as string)
 const companyId = ref('')
@@ -261,12 +259,19 @@ async function handleRegister() {
 }
 
 onMounted(async () => {
-  const result = await companyStore.getCompanyBySlug(slug.value)
-  if (result.success && result.company) {
-    companyId.value = result.company.id
-    companyName.value = result.company.name
-  } else {
-    errorMsg.value = 'Empresa não encontrada.'
+  try {
+    // Fetch company without authentication (public access)
+    const records = await pb.collection('companies').getList(1, 1, {
+      filter: `slug="${slug.value}"`,
+    })
+    if (records.items.length > 0) {
+      companyId.value = records.items[0].id
+      companyName.value = records.items[0].name
+    } else {
+      errorMsg.value = 'Empresa não encontrada.'
+    }
+  } catch (error: any) {
+    errorMsg.value = error?.message || 'Erro ao buscar empresa.'
   }
 })
 </script>
