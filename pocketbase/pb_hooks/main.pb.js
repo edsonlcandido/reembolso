@@ -52,7 +52,14 @@ routerAdd("POST", "/api/ai/read-receipt", (e) => {
             content: [
               {
                 type: "text",
-                text: "Analise este comprovante de despesa e extraia as informações. Retorne APENAS um JSON válido com os campos: date (formato YYYY-MM-DD ou null), amount (valor total em reais como número decimal, ex: 45.90, ou null), merchant (nome do estabelecimento ou null), category (uma de: food, transport, lodging, supplies, other, ou null), description (descrição breve em português ou null). Não inclua texto adicional, apenas o JSON.",
+                text: `Analise este comprovante de despesa e extraia as informações. 
+                Retorne APENAS um JSON válido com os campos: 
+                date (formato YYYY-MM-DD ou null), 
+                amount (valor total em reais como número decimal, ex: 45.90, ou null), 
+                merchant (nome do estabelecimento ou null), 
+                category (uma de: food, transport, lodging, supplies, other, ou null), 
+                description (descrição breve em português ou null). 
+                Não inclua texto adicional, apenas o JSON.`,
               },
               {
                 type: "image_url",
