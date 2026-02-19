@@ -105,7 +105,7 @@ const userName = computed(() => {
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: HomeIcon },
   { path: '/reports', label: 'Relatórios', icon: DocumentTextIcon },
-  { path: '/reports/new', label: 'Nova Despesa', icon: PlusCircleIcon },
+  { path: '/expenses/new', label: 'Nova Despesa', icon: PlusCircleIcon },
   { path: '/company', label: 'Empresa', icon: BuildingOfficeIcon },
   { path: '/company/members', label: 'Membros', icon: UsersIcon },
   { path: '/categories', label: 'Categorias', icon: TagIcon },
