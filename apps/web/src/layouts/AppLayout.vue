@@ -8,7 +8,7 @@
     >
       <div class="flex h-16 items-center justify-center border-b border-gray-700">
         <h1 class="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-          ExpenseApp
+          Reembolsa AI
         </h1>
       </div>
 
