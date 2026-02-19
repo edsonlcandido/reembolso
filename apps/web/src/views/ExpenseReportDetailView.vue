@@ -124,6 +124,27 @@
 
         <div v-if="showItemForm" class="p-8 bg-blue-50/50 border-b border-gray-100">
           <form @submit.prevent="handleAddItem" class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Comprovante</label>
+              <input ref="fileInputRef" type="file" accept="image/*" @change="handleFileChange" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+              <div class="mt-2">
+                <button
+                  type="button"
+                  @click="analyzeWithAI"
+                  :disabled="analyzingReceipt || !receiptFile"
+                  :title="!receiptFile ? 'Selecione um comprovante primeiro' : 'Analisar comprovante com IA'"
+                  class="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-violet-500 to-fuchsia-500 px-4 py-2 text-sm font-semibold text-white shadow hover:from-violet-600 hover:to-fuchsia-600 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <svg v-if="!analyzingReceipt" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                  <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  {{ analyzingReceipt ? 'Analisando...' : 'Analisar com IA' }}
+                </button>
+              </div>
+            </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Data</label>
@@ -157,10 +178,7 @@
               <label class="block text-sm font-medium text-gray-700 mb-1">Observações</label>
               <textarea v-model="itemForm.notes" rows="2" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" placeholder="Observações adicionais" />
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Comprovante</label>
-              <input type="file" accept="image/*" @change="handleFileChange" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
-            </div>
+            
             <div class="flex gap-3">
               <button
                 type="submit"
@@ -277,6 +295,8 @@ const showItemForm = ref(false)
 const showRejectModal = ref(false)
 const rejectionReason = ref('')
 const receiptFile = ref<File | null>(null)
+const fileInputRef = ref<HTMLInputElement | null>(null)
+const analyzingReceipt = ref(false)
 
 const itemForm = ref({
   date: '',
@@ -338,9 +358,47 @@ function handleFileChange(e: Event) {
   }
 }
 
+async function analyzeWithAI() {
+  if (!receiptFile.value) return
+
+  analyzingReceipt.value = true
+  errorMsg.value = ''
+
+  try {
+    const base64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = (ev) => {
+        const dataUrl = ev.target?.result as string
+        resolve(dataUrl.split(',')[1])
+      }
+      reader.onerror = reject
+      reader.readAsDataURL(receiptFile.value!)
+    })
+
+    const data = await pb.send('/api/ai/read-receipt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageBase64: base64, mimeType: receiptFile.value.type || 'image/jpeg' }),
+    })
+
+    if (data.date) itemForm.value.date = data.date
+    if (data.amount != null) itemForm.value.amountDisplay = String(data.amount)
+    if (data.merchant) itemForm.value.merchant = data.merchant
+    if (data.category) itemForm.value.category = data.category
+    if (data.description) itemForm.value.description = data.description
+
+    successMsg.value = 'Dados extraídos pela IA! Revise os campos e salve.'
+  } catch (err: any) {
+    errorMsg.value = err?.message || 'Erro ao analisar comprovante com IA.'
+  } finally {
+    analyzingReceipt.value = false
+  }
+}
+
 function resetItemForm() {
   itemForm.value = { date: '', category: '', amountDisplay: '', merchant: '', description: '', notes: '' }
   receiptFile.value = null
+  if (fileInputRef.value) fileInputRef.value.value = ''
 }
 
 async function handleAddItem() {
