@@ -204,7 +204,7 @@ async function analyzeWithAI() {
     if (data.date) itemForm.value.date = data.date
     if (data.amount != null) itemForm.value.amountDisplay = String(data.amount)
     if (data.merchant) itemForm.value.merchant = data.merchant
-    if (data.category) itemForm.value.category = data.category
+    if (data.category) itemForm.value.category = resolveAICategory(data.category)
     if (data.description) itemForm.value.description = data.description
 
     successMsg.value = 'Dados extraídos pela IA! Revise os campos e salve.'
@@ -247,6 +247,20 @@ async function fetchCategories() {
   } catch {
     categories.value = []
   }
+}
+
+// Maps the AI-returned category value (name or legacy slug) to a category ID.
+const slugToName: Record<string, string> = {
+  food: 'Alimentação', transport: 'Transporte',
+  lodging: 'Hospedagem', supplies: 'Material', other: 'Outros',
+}
+function resolveAICategory(aiValue: string): string {
+  if (!aiValue) return ''
+  const normalized = slugToName[aiValue.toLowerCase()] ?? aiValue
+  const match = categories.value.find(
+    c => c.name.toLowerCase() === normalized.toLowerCase()
+  )
+  return match?.id ?? ''
 }
 
 async function handleAddItem() {
