@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import pb from '../services/pocketbase'
+import { useCompanyStore } from '../stores/company'
 import LoginView from '../views/LoginView.vue'
 import CompanyAuthView from '../views/CompanyAuthView.vue'
 import AppLayout from '../layouts/AppLayout.vue'
@@ -52,16 +53,19 @@ const router = createRouter({
           path: 'company',
           name: 'company-list',
           component: CompaniesListView,
+          meta: { requiresAdmin: true },
         },
         {
           path: 'company/edit/:id',
           name: 'company-edit',
           component: CompanySetupView,
+          meta: { requiresAdmin: true },
         },
         {
           path: 'company/members',
           name: 'company-members',
           component: CompanyMembersView,
+          meta: { requiresAdmin: true },
         },
         {
           path: 'reports',
@@ -87,6 +91,7 @@ const router = createRouter({
           path: 'categories',
           name: 'categories',
           component: CategoriesView,
+          meta: { requiresAdmin: true },
         },
       ],
     },
@@ -107,11 +112,22 @@ router.beforeEach(async (to, _from, next) => {
 
   const needsAuth = to.matched.some(record => record.meta.requiresAuth)
   const needsGuest = to.matched.some(record => record.meta.requiresGuest)
+  const needsAdmin = to.matched.some(record => record.meta.requiresAdmin)
 
   if (needsAuth && !isAuthenticated) {
     next('/login')
   } else if (needsGuest && isAuthenticated) {
     next('/dashboard')
+  } else if (needsAdmin && isAuthenticated) {
+    const companyStore = useCompanyStore()
+    if (companyStore.companies.length === 0) {
+      await companyStore.fetchMyCompanies()
+    }
+    if (companyStore.currentUserRole !== 'admin') {
+      next('/dashboard')
+      return
+    }
+    next()
   } else {
     next()
   }

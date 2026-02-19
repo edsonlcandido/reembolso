@@ -102,14 +102,20 @@ const userName = computed(() => {
   return authStore.user?.name || authStore.user?.email || 'Usuário'
 })
 
-const navItems = [
-  { path: '/dashboard', label: 'Dashboard', icon: HomeIcon },
-  { path: '/reports', label: 'Relatórios', icon: DocumentTextIcon },
-  { path: '/expenses/new', label: 'Nova Despesa', icon: PlusCircleIcon },
-  { path: '/company', label: 'Empresa', icon: BuildingOfficeIcon },
-  { path: '/company/members', label: 'Membros', icon: UsersIcon },
-  { path: '/categories', label: 'Categorias', icon: TagIcon },
+const isAdmin = computed(() => companyStore.currentUserRole === 'admin')
+
+const allNavItems = [
+  { path: '/dashboard', label: 'Dashboard', icon: HomeIcon, adminOnly: false },
+  { path: '/reports', label: 'Relatórios', icon: DocumentTextIcon, adminOnly: false },
+  { path: '/expenses/new', label: 'Nova Despesa', icon: PlusCircleIcon, adminOnly: false },
+  { path: '/company', label: 'Empresa', icon: BuildingOfficeIcon, adminOnly: true },
+  { path: '/company/members', label: 'Membros', icon: UsersIcon, adminOnly: true },
+  { path: '/categories', label: 'Categorias', icon: TagIcon, adminOnly: true },
 ]
+
+const navItems = computed(() =>
+  allNavItems.filter(item => !item.adminOnly || isAdmin.value)
+)
 
 function isActive(path: string): boolean {
   return route.path === path
