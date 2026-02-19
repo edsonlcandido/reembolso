@@ -51,7 +51,7 @@ export const useCompanyStore = defineStore('company', () => {
     }
   }
 
-  async function createCompany(data: { name: string; cnpj?: string; email?: string; phone?: string; address?: string }) {
+  async function createCompany(data: { name: string; slug: string; cnpj?: string; email?: string; phone?: string; address?: string }) {
     loading.value = true
     try {
       const company = await pb.collection('companies').create({
@@ -73,7 +73,7 @@ export const useCompanyStore = defineStore('company', () => {
     }
   }
 
-  async function updateCompany(id: string, data: Partial<{ name: string; cnpj: string; email: string; phone: string; address: string }>) {
+  async function updateCompany(id: string, data: Partial<{ name: string; slug: string; cnpj: string; email: string; phone: string; address: string }>) {
     loading.value = true
     try {
       await pb.collection('companies').update(id, data)
@@ -151,6 +151,23 @@ export const useCompanyStore = defineStore('company', () => {
     }
   }
 
+  async function getCompanyBySlug(slug: string) {
+    loading.value = true
+    try {
+      const records = await pb.collection('companies').getList(1, 1, {
+        filter: `slug="${slug}"`,
+      })
+      if (records.items.length === 0) {
+        return { success: false, error: 'Empresa não encontrada.', company: null }
+      }
+      return { success: true, company: records.items[0] }
+    } catch (error: any) {
+      return { success: false, error: error?.message || 'Erro ao buscar empresa.', company: null }
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     currentCompany,
     companies,
@@ -166,5 +183,6 @@ export const useCompanyStore = defineStore('company', () => {
     addMember,
     updateMemberRole,
     removeMember,
+    getCompanyBySlug,
   }
 })

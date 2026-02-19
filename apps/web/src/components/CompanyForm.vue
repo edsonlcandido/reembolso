@@ -2,12 +2,8 @@
   <div class="max-w-2xl mx-auto">
     <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
       <div class="bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-6">
-        <h1 class="text-2xl font-bold text-white">
-          {{ isEditing ? 'Editar Empresa' : 'Criar Empresa' }}
-        </h1>
-        <p class="text-blue-100 mt-1">
-          {{ isEditing ? 'Atualize os dados da sua empresa' : 'Preencha os dados para criar sua empresa' }}
-        </p>
+        <h1 class="text-2xl font-bold text-white">Criar Empresa</h1>
+        <p class="text-blue-100 mt-1">Preencha os dados para criar sua empresa</p>
       </div>
 
       <div v-if="successMsg" class="mx-8 mt-6 rounded-lg bg-green-50 border border-green-200 p-4">
@@ -104,14 +100,8 @@
               </svg>
               Salvando...
             </span>
-            <span v-else>{{ isEditing ? 'Atualizar' : 'Criar Empresa' }}</span>
+            <span v-else>Criar Empresa</span>
           </button>
-          <router-link
-            to="/dashboard"
-            class="rounded-lg border border-gray-300 px-6 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all text-center"
-          >
-            Cancelar
-          </router-link>
         </div>
       </form>
     </div>
@@ -120,15 +110,12 @@
 
 <script setup lang="ts">
 import { useCompanyStore } from '../stores/company'
-import { useRouter, useRoute } from 'vue-router'
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 
-const router = useRouter()
-const route = useRoute()
+const emit = defineEmits(['created'])
+
 const companyStore = useCompanyStore()
 
-const isEditing = ref(false)
-const editId = ref('')
 const successMsg = ref('')
 const errorMsg = ref('')
 const emailError = ref('')
@@ -172,7 +159,7 @@ function generateSlug(text: string): string {
 }
 
 function handleNameChange() {
-  if (!slugManuallyEdited.value && !isEditing.value) {
+  if (!slugManuallyEdited.value) {
     form.value.slug = generateSlug(form.value.name)
   }
 }
@@ -227,36 +214,26 @@ async function handleSubmit() {
     address: form.value.address || undefined,
   }
 
-  let result
-  if (isEditing.value) {
-    result = await companyStore.updateCompany(editId.value, data)
-  } else {
-    result = await companyStore.createCompany(data)
-  }
+  const result = await companyStore.createCompany(data)
 
   if (result.success) {
-    successMsg.value = isEditing.value ? 'Empresa atualizada com sucesso!' : 'Empresa criada com sucesso!'
-    setTimeout(() => router.push('/dashboard'), 1000)
+    successMsg.value = 'Empresa criada com sucesso!'
+    // Reset form
+    form.value = {
+      name: '',
+      slug: '',
+      cnpj: '',
+      email: '',
+      phone: '',
+      address: '',
+    }
+    slugManuallyEdited.value = false
+    
+    setTimeout(() => {
+      emit('created')
+    }, 1000)
   } else {
-    errorMsg.value = result.error || 'Erro ao salvar empresa.'
+    errorMsg.value = result.error || 'Erro ao criar empresa.'
   }
 }
-
-onMounted(async () => {
-  if (route.params.id) {
-    isEditing.value = true
-    editId.value = route.params.id as string
-    slugManuallyEdited.value = true // Don't auto-generate slug when editing
-    await companyStore.fetchMyCompanies()
-    const company = companyStore.companies.find(c => c.id === editId.value)
-    if (company) {
-      form.value.name = company.name || ''
-      form.value.slug = company.slug || ''
-      form.value.cnpj = company.cnpj || ''
-      form.value.email = company.email || ''
-      form.value.phone = company.phone || ''
-      form.value.address = company.address || ''
-    }
-  }
-})
 </script>
