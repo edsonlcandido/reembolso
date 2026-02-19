@@ -154,11 +154,12 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
                 <select v-model="itemForm.category" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
                   <option value="">Selecionar</option>
-                  <option value="food">Alimentação</option>
-                  <option value="transport">Transporte</option>
-                  <option value="lodging">Hospedagem</option>
-                  <option value="supplies">Material</option>
-                  <option value="other">Outros</option>
+                  <template v-if="categories.length > 0">
+                    <option v-for="cat in categories" :key="cat.id" :value="cat.id">
+                      {{ cat.icon }} {{ cat.name }}
+                    </option>
+                  </template>
+                  <option v-else disabled value="">Nenhuma categoria cadastrada</option>
                 </select>
               </div>
               <div>
@@ -281,14 +282,17 @@
 
 <script setup lang="ts">
 import { useExpensesStore } from '../stores/expenses'
+import { useCompanyStore } from '../stores/company'
 import { useRoute, useRouter } from 'vue-router'
 import { ref, computed, onMounted } from 'vue'
 import pb from '../services/pocketbase'
 import { PlusIcon, TrashIcon, ClipboardDocumentListIcon } from '@heroicons/vue/24/outline'
+import type { RecordModel } from 'pocketbase'
 
 const route = useRoute()
 const router = useRouter()
 const expensesStore = useExpensesStore()
+const companyStore = useCompanyStore()
 const successMsg = ref('')
 const errorMsg = ref('')
 const showItemForm = ref(false)
@@ -297,6 +301,7 @@ const rejectionReason = ref('')
 const receiptFile = ref<File | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const analyzingReceipt = ref(false)
+const categories = ref<RecordModel[]>([])
 
 const itemForm = ref({
   date: '',
@@ -335,14 +340,21 @@ function statusLabel(status: string): string {
   }
 }
 
-function categoryLabel(category: string): string {
-  switch (category) {
-    case 'food': return 'Alimentação'
-    case 'transport': return 'Transporte'
-    case 'lodging': return 'Hospedagem'
-    case 'supplies': return 'Material'
-    case 'other': return 'Outros'
-    default: return category
+function categoryLabel(categoryId: string): string {
+  const cat = categories.value.find(c => c.id === categoryId)
+  return cat ? `${cat.icon} ${cat.name}` : categoryId
+}
+
+async function fetchCategories() {
+  const companyId = companyStore.currentCompany?.id
+  if (!companyId) return
+  try {
+    categories.value = await pb.collection('categories').getFullList({
+      filter: `company="${companyId}" && active=true`,
+      sort: 'name',
+    })
+  } catch {
+    categories.value = []
   }
 }
 
@@ -378,7 +390,7 @@ async function analyzeWithAI() {
     const data = await pb.send('/api/ai/read-receipt', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ imageBase64: base64, mimeType: receiptFile.value.type || 'image/jpeg' }),
+      body: JSON.stringify({ imageBase64: base64, mimeType: receiptFile.value.type || 'image/jpeg', companyId: companyStore.currentCompany?.id || '' }),
     })
 
     if (data.date) itemForm.value.date = data.date
@@ -529,7 +541,8 @@ async function loadReport() {
   await expensesStore.fetchItems(id)
 }
 
-onMounted(() => {
-  loadReport()
+onMounted(async () => {
+  await companyStore.fetchMyCompanies()
+  await Promise.all([loadReport(), fetchCategories()])
 })
 </script>

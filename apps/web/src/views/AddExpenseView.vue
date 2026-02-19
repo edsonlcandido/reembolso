@@ -78,11 +78,12 @@
               <select v-model="itemForm.category"
                 class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
                 <option value="">Selecionar</option>
-                <option value="food">Alimentação</option>
-                <option value="transport">Transporte</option>
-                <option value="lodging">Hospedagem</option>
-                <option value="supplies">Material</option>
-                <option value="other">Outros</option>
+                <template v-if="categories.length > 0">
+                  <option v-for="cat in categories" :key="cat.id" :value="cat.id">
+                    {{ cat.icon }} {{ cat.name }}
+                  </option>
+                </template>
+                <option v-else disabled value="">Nenhuma categoria cadastrada</option>
               </select>
             </div>
             <div>
@@ -134,6 +135,7 @@ import { useRouter } from 'vue-router'
 import pb from '../services/pocketbase'
 import { useExpensesStore } from '../stores/expenses'
 import { useCompanyStore } from '../stores/company'
+import type { RecordModel } from 'pocketbase'
 
 const router = useRouter()
 const expensesStore = useExpensesStore()
@@ -148,6 +150,7 @@ const errorMsg = ref('')
 const selectedReportId = ref('')
 const receiptFile = ref<File | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
+const categories = ref<RecordModel[]>([])
 
 const itemForm = ref({
   date: '',
@@ -233,6 +236,19 @@ async function loadDraftReports() {
   }
 }
 
+async function fetchCategories() {
+  const companyId = companyStore.currentCompany?.id
+  if (!companyId) return
+  try {
+    categories.value = await pb.collection('categories').getFullList({
+      filter: `company="${companyId}" && active=true`,
+      sort: 'name',
+    })
+  } catch {
+    categories.value = []
+  }
+}
+
 async function handleAddItem() {
   successMsg.value = ''
   errorMsg.value = ''
@@ -287,6 +303,6 @@ async function handleAddItem() {
 
 onMounted(async () => {
   await companyStore.fetchMyCompanies()
-  await loadDraftReports()
+  await Promise.all([loadDraftReports(), fetchCategories()])
 })
 </script>
