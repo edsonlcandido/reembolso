@@ -181,6 +181,7 @@
 
             <router-link
               to="/company/members"
+              v-if="isAdmin"
               class="flex items-center gap-3 p-3 rounded-xl hover:bg-green-50 transition-colors group"
             >
               <div class="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center shadow">
@@ -194,6 +195,7 @@
 
             <router-link
               to="/categories"
+              v-if="isAdmin"
               class="flex items-center gap-3 p-3 rounded-xl hover:bg-orange-50 transition-colors group"
             >
               <div class="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center shadow">
@@ -244,6 +246,8 @@ const stats = ref({
 const userName = computed(() => {
   return authStore.user?.name || authStore.user?.email || 'Usuário'
 })
+
+const isAdmin = computed(() => companyStore.currentUserRole === 'admin')
 
 function formatCurrency(cents: number): string {
   return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
