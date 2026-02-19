@@ -2,15 +2,12 @@
 
 migrate((app) => {
   const col = app.findCollectionByNameOrId("expense_items")
-  const categoriesCol = app.findCollectionByNameOrId("categories")
 
-  // Replace the select field with a relation field pointing to the categories collection
-  col.fields.add(new RelationField({
+  // Replace the hardcoded select field with a text field to store category names
+  col.fields.add(new TextField({
     name: "category",
     required: false,
-    collectionId: categoriesCol.id,
-    maxSelect: 1,
-    cascadeDelete: false,
+    max: 100,
   }))
 
   app.save(col)

@@ -79,7 +79,7 @@
                 class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
                 <option value="">Selecionar</option>
                 <template v-if="categories.length > 0">
-                  <option v-for="cat in categories" :key="cat.id" :value="cat.id">
+                  <option v-for="cat in categories" :key="cat.id" :value="cat.name">
                     {{ cat.icon }} {{ cat.name }}
                   </option>
                 </template>
@@ -249,7 +249,7 @@ async function fetchCategories() {
   }
 }
 
-// Maps the AI-returned category value (name or legacy slug) to a category ID.
+// Maps the AI-returned category value (name or legacy slug) to a category name.
 const slugToName: Record<string, string> = {
   food: 'Alimentação', transport: 'Transporte',
   lodging: 'Hospedagem', supplies: 'Material', other: 'Outros',
@@ -260,7 +260,7 @@ function resolveAICategory(aiValue: string): string {
   const match = categories.value.find(
     c => c.name.toLowerCase() === normalized.toLowerCase()
   )
-  return match?.id ?? ''
+  return match?.name ?? ''
 }
 
 async function handleAddItem() {
