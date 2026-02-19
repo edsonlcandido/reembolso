@@ -78,11 +78,12 @@
               <select v-model="itemForm.category"
                 class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
                 <option value="">Selecionar</option>
-                <option value="food">Alimentação</option>
-                <option value="transport">Transporte</option>
-                <option value="lodging">Hospedagem</option>
-                <option value="supplies">Material</option>
-                <option value="other">Outros</option>
+                <template v-if="categories.length > 0">
+                  <option v-for="cat in categories" :key="cat.id" :value="cat.name">
+                    {{ cat.icon }} {{ cat.name }}
+                  </option>
+                </template>
+                <option v-else disabled value="">Nenhuma categoria cadastrada</option>
               </select>
             </div>
             <div>
@@ -134,6 +135,7 @@ import { useRouter } from 'vue-router'
 import pb from '../services/pocketbase'
 import { useExpensesStore } from '../stores/expenses'
 import { useCompanyStore } from '../stores/company'
+import type { RecordModel } from 'pocketbase'
 
 const router = useRouter()
 const expensesStore = useExpensesStore()
@@ -148,6 +150,7 @@ const errorMsg = ref('')
 const selectedReportId = ref('')
 const receiptFile = ref<File | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
+const categories = ref<RecordModel[]>([])
 
 const itemForm = ref({
   date: '',
@@ -195,13 +198,13 @@ async function analyzeWithAI() {
     const data = await pb.send('/api/ai/read-receipt', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ imageBase64: base64, mimeType: receiptFile.value.type || 'image/jpeg' }),
+      body: JSON.stringify({ imageBase64: base64, mimeType: receiptFile.value.type || 'image/jpeg', companyId: companyStore.currentCompany?.id || '' }),
     })
 
     if (data.date) itemForm.value.date = data.date
     if (data.amount != null) itemForm.value.amountDisplay = String(data.amount)
     if (data.merchant) itemForm.value.merchant = data.merchant
-    if (data.category) itemForm.value.category = data.category
+    if (data.category) itemForm.value.category = resolveAICategory(data.category)
     if (data.description) itemForm.value.description = data.description
 
     successMsg.value = 'Dados extraídos pela IA! Revise os campos e salve.'
@@ -231,6 +234,33 @@ async function loadDraftReports() {
   } finally {
     loadingReports.value = false
   }
+}
+
+async function fetchCategories() {
+  const companyId = companyStore.currentCompany?.id
+  if (!companyId) return
+  try {
+    categories.value = await pb.collection('categories').getFullList({
+      filter: `company="${companyId}" && active=true`,
+      sort: 'name',
+    })
+  } catch {
+    categories.value = []
+  }
+}
+
+// Maps the AI-returned category value (name or legacy slug) to a category name.
+const slugToName: Record<string, string> = {
+  food: 'Alimentação', transport: 'Transporte',
+  lodging: 'Hospedagem', supplies: 'Material', other: 'Outros',
+}
+function resolveAICategory(aiValue: string): string {
+  if (!aiValue) return ''
+  const normalized = slugToName[aiValue.toLowerCase()] ?? aiValue
+  const match = categories.value.find(
+    c => c.name.toLowerCase() === normalized.toLowerCase()
+  )
+  return match?.name ?? ''
 }
 
 async function handleAddItem() {
@@ -287,6 +317,6 @@ async function handleAddItem() {
 
 onMounted(async () => {
   await companyStore.fetchMyCompanies()
-  await loadDraftReports()
+  await Promise.all([loadDraftReports(), fetchCategories()])
 })
 </script>
