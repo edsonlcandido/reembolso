@@ -156,6 +156,7 @@ export const useExpensesStore = defineStore('expenses', () => {
       const records = await pb.collection('expense_items').getFullList({
         filter: `report="${reportId}"`,
         sort: '-date',
+        expand: 'category',
       })
       items.value = records
       return { success: true, data: records }

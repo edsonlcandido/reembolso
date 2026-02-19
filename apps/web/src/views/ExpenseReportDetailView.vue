@@ -155,7 +155,7 @@
                 <select v-model="itemForm.category" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
                   <option value="">Selecionar</option>
                   <template v-if="categories.length > 0">
-                    <option v-for="cat in categories" :key="cat.id" :value="cat.name">
+                    <option v-for="cat in categories" :key="cat.id" :value="cat.id">
                       {{ cat.icon }} {{ cat.name }}
                     </option>
                   </template>
@@ -340,9 +340,9 @@ function statusLabel(status: string): string {
   }
 }
 
-function categoryLabel(categoryName: string): string {
-  const cat = categories.value.find(c => c.name === categoryName)
-  return cat ? `${cat.icon} ${cat.name}` : categoryName
+function categoryLabel(categoryId: string): string {
+  const cat = categories.value.find(c => c.id === categoryId)
+  return cat ? `${cat.icon} ${cat.name}` : ''
 }
 
 async function fetchCategories() {
@@ -358,7 +358,8 @@ async function fetchCategories() {
   }
 }
 
-// Maps the AI-returned category value (name or legacy slug) to a category name.
+// Maps the AI-returned category value (name or legacy slug) to a category ID.
+// Returns an empty string when no matching category is found.
 const slugToName: Record<string, string> = {
   food: 'Alimentação', transport: 'Transporte',
   lodging: 'Hospedagem', supplies: 'Material', other: 'Outros',
@@ -369,7 +370,7 @@ function resolveAICategory(aiValue: string): string {
   const match = categories.value.find(
     c => c.name.toLowerCase() === normalized.toLowerCase()
   )
-  return match?.name ?? ''
+  return match?.id ?? ''
 }
 
 function getFileUrl(item: any): string {
