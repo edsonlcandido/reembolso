@@ -19,7 +19,7 @@ routerAdd("GET", "/app/{path...}", $apis.static("pb_public/app", true))
  * de visão e retorna os dados extraídos do comprovante (data, valor,
  * estabelecimento, categoria e descrição) para preencher o formulário.
  *
- * Requer a variável de ambiente OPENROUTER_API_KEY configurada no servidor.
+ * A chave OPENROUTER_API_KEY é lida da tabela system_variables no banco de dados.
  */
 routerAdd("POST", "/api/ai/read-receipt", (e) => {
   const body = e.requestInfo().body
@@ -30,9 +30,18 @@ routerAdd("POST", "/api/ai/read-receipt", (e) => {
     return e.json(400, { error: "Imagem não fornecida" })
   }
 
-  const apiKey = $os.getenv("OPENROUTER_API_KEY")
+  // Read API key from the system_variables table
+  let apiKey = ""
+  try {
+    const record = $app.findFirstRecordByData("system_variables", "key", "OPENROUTER_API_KEY")
+    apiKey = record.getString("value")
+  } catch (dbErr) {
+    // Fall back to environment variable if table/record doesn't exist yet
+    apiKey = $os.getenv("OPENROUTER_API_KEY")
+  }
+
   if (!apiKey) {
-    return e.json(500, { error: "Chave da API de IA não configurada no servidor" })
+    return e.json(500, { error: "Chave da API de IA não configurada. Configure em system_variables." })
   }
 
   let response
