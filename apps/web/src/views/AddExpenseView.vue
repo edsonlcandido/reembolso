@@ -186,20 +186,20 @@ function handleFileChange(e: Event) {
 
 async function loadDraftReports() {
   loadingReports.value = true
+  errorMsg.value = ''
   try {
     const companyId = companyStore.currentCompany?.id
     if (!companyId) {
       draftReports.value = []
       return
     }
-    const userId = pb.authStore.record?.id
-    const records = await pb.collection('expense_reports').getFullList({
-      filter: `company="${companyId}" && status="draft" && user="${userId}"`,
-      sort: '-created',
-    })
-    draftReports.value = records
-  } catch {
-    draftReports.value = []
+    const result = await expensesStore.fetchReports(companyId, { status: 'draft' })
+    if (result.success) {
+      draftReports.value = expensesStore.reports
+    } else {
+      errorMsg.value = result.error || 'Erro ao carregar relatórios.'
+      draftReports.value = []
+    }
   } finally {
     loadingReports.value = false
   }
