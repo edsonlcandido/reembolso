@@ -13,6 +13,42 @@
 routerAdd("GET", "/app/{path...}", $apis.static("pb_public/app", true))
 
 /**
+ * Hook: Criação de categorias padrão ao criar uma nova empresa
+ *
+ * Quando uma empresa é criada, as categorias padrão (Alimentação, Transporte,
+ * Hospedagem, Material e Outros) são automaticamente inseridas no banco de dados.
+ */
+onRecordAfterCreateSuccess((e) => {
+  const companyId = e.record.id
+
+  const defaultCategories = [
+    { name: "Alimentação", icon: "🍔", color: "#ef4444" },
+    { name: "Transporte", icon: "🚗", color: "#3b82f6" },
+    { name: "Hospedagem", icon: "🏨", color: "#8b5cf6" },
+    { name: "Material", icon: "📦", color: "#eab308" },
+    { name: "Outros", icon: "📁", color: "#6b7280" },
+  ]
+
+  try {
+    const categoriesCol = $app.findCollectionByNameOrId("categories")
+    for (const cat of defaultCategories) {
+      const record = new Record(categoriesCol)
+      record.set("company", companyId)
+      record.set("name", cat.name)
+      record.set("icon", cat.icon)
+      record.set("color", cat.color)
+      record.set("active", true)
+      $app.save(record)
+    }
+  } catch (err) {
+    // Log error but do not fail company creation
+    console.error("Erro ao criar categorias padrão:", err)
+  }
+
+  return e.next()
+}, "companies")
+
+/**
  * Endpoint: Leitura de comprovante via IA (OpenRouter)
  *
  * Recebe uma imagem em base64, envia para a API do OpenRouter com um modelo
@@ -25,6 +61,7 @@ routerAdd("POST", "/api/ai/read-receipt", (e) => {
   const body = e.requestInfo().body
   const imageBase64 = body.imageBase64
   const mimeType = body.mimeType || "image/jpeg"
+  const companyId = body.companyId || ""
 
   if (!imageBase64) {
     return e.json(400, { error: "Imagem não fornecida" })
@@ -42,6 +79,27 @@ routerAdd("POST", "/api/ai/read-receipt", (e) => {
 
   if (!apiKey) {
     return e.json(500, { error: "Chave da API de IA não configurada. Configure em system_variables." })
+  }
+
+  // Build category list for the LLM prompt from the company's categories in the database.
+  // Falls back to the hardcoded defaults if no companyId is provided or no categories are found.
+  const defaultCategoryValues = "food, transport, lodging, supplies, other"
+  let categorySequence = defaultCategoryValues
+  if (companyId) {
+    try {
+      const catRecords = $app.findRecordsByFilter(
+        "categories",
+        `company = "${companyId}" && active = true`,
+        "name",
+        50,
+        0,
+      )
+      if (catRecords && catRecords.length > 0) {
+        categorySequence = catRecords.map((r) => r.getString("name")).join(", ")
+      }
+    } catch (catErr) {
+      // If fetching categories fails, fall back to defaults
+    }
   }
 
   let response
@@ -66,7 +124,7 @@ routerAdd("POST", "/api/ai/read-receipt", (e) => {
                 date (formato YYYY-MM-DD ou null), 
                 amount (valor total em reais como número decimal, ex: 45.90, ou null), 
                 merchant (nome do estabelecimento ou null), 
-                category (uma de: food, transport, lodging, supplies, other, ou null), 
+                category (uma das seguintes categorias: ${categorySequence}, ou null), 
                 description (descrição breve em português ou null). 
                 Não inclua texto adicional, apenas o JSON.`,
               },

@@ -195,7 +195,7 @@ async function analyzeWithAI() {
     const data = await pb.send('/api/ai/read-receipt', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ imageBase64: base64, mimeType: receiptFile.value.type || 'image/jpeg' }),
+      body: JSON.stringify({ imageBase64: base64, mimeType: receiptFile.value.type || 'image/jpeg', companyId: companyStore.currentCompany?.id || '' }),
     })
 
     if (data.date) itemForm.value.date = data.date
