@@ -5,9 +5,9 @@ migrate((app) => {
   const categoriesCol = app.findCollectionByNameOrId("categories")
 
   // Remove the text field
-  const textField = col.fields.getByName("category")
+  const textField = col.fields.find(f => f.name === "category")
   if (textField) {
-    col.fields.remove(textField)
+    col.fields.removeById(textField.id)
   }
 
   // Add a relation field pointing to the categories collection
@@ -24,9 +24,9 @@ migrate((app) => {
   const col = app.findCollectionByNameOrId("expense_items")
 
   // Remove the relation field
-  const relField = col.fields.getByName("category")
+  const relField = col.fields.find(f => f.name === "category")
   if (relField) {
-    col.fields.remove(relField)
+    col.fields.removeById(relField.id)
   }
 
   // Restore the text field
