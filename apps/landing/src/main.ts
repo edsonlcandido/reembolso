@@ -10,7 +10,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
             <div class="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
               <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
             </div>
-            <span class="text-xl font-bold text-gray-900">Reembolso<span class="text-primary-600">IA</span></span>
+            <span class="text-xl font-bold text-gray-900">Reembolsa<span class="text-primary-600">AI</span></span>
           </div>
           <div class="hidden md:flex items-center space-x-8">
             <a href="#features" class="text-sm font-medium text-gray-600 hover:text-primary-600 transition-colors">Recursos</a>
