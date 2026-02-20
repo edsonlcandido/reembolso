@@ -54,16 +54,16 @@ export const useCompanyStore = defineStore('company', () => {
   async function createCompany(data: { name: string; slug: string; cnpj?: string; email?: string; phone?: string; address?: string }) {
     loading.value = true
     try {
-      const company = await pb.collection('companies').create({
-        ...data,
-        active: true,
+      // Use the custom server-side endpoint so the company and the admin
+      // membership are created atomically with guaranteed auth context.
+      const response = await pb.send('/api/companies/create', {
+        method: 'POST',
+        body: JSON.stringify({ ...data, active: true }),
+        headers: { 'Content-Type': 'application/json' },
       })
-      await pb.collection('company_users').create({
-        company: company.id,
-        user: pb.authStore.record?.id,
-        role: 'admin',
-        active: true,
-      })
+      if (!response || !response.id) {
+        return { success: false, error: 'Erro ao criar empresa.' }
+      }
       await fetchMyCompanies()
       return { success: true }
     } catch (error: any) {

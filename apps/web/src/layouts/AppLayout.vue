@@ -103,18 +103,20 @@ const userName = computed(() => {
 })
 
 const isAdmin = computed(() => companyStore.currentUserRole === 'admin')
+const hasNoCompany = computed(() => companyStore.companies.length === 0)
 
 const allNavItems = [
-  { path: '/dashboard', label: 'Dashboard', icon: HomeIcon, adminOnly: false },
-  { path: '/reports', label: 'Relatórios', icon: DocumentTextIcon, adminOnly: false },
-  { path: '/expenses/new', label: 'Nova Despesa', icon: PlusCircleIcon, adminOnly: false },
-  { path: '/company', label: 'Empresa', icon: BuildingOfficeIcon, adminOnly: true },
-  { path: '/company/members', label: 'Membros', icon: UsersIcon, adminOnly: true },
-  { path: '/categories', label: 'Categorias', icon: TagIcon, adminOnly: true },
+  { path: '/dashboard', label: 'Dashboard', icon: HomeIcon, adminOnly: false, showForNewUser: false },
+  { path: '/reports', label: 'Relatórios', icon: DocumentTextIcon, adminOnly: false, showForNewUser: false },
+  { path: '/expenses/new', label: 'Nova Despesa', icon: PlusCircleIcon, adminOnly: false, showForNewUser: false },
+  { path: '/company', label: 'Empresa', icon: BuildingOfficeIcon, adminOnly: true, showForNewUser: true },
+  { path: '/company/members', label: 'Membros', icon: UsersIcon, adminOnly: true, showForNewUser: false },
+  { path: '/categories', label: 'Categorias', icon: TagIcon, adminOnly: true, showForNewUser: false },
 ]
 
 const navItems = computed(() =>
-  allNavItems.filter(item => !item.adminOnly || isAdmin.value)
+  // Show item if: not admin-only, OR user is admin, OR item is shown for new users without a company
+  allNavItems.filter(item => !item.adminOnly || isAdmin.value || (item.showForNewUser && hasNoCompany.value))
 )
 
 function isActive(path: string): boolean {
