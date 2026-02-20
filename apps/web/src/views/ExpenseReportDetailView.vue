@@ -64,7 +64,7 @@
           <div class="flex flex-wrap gap-3">
             <template v-if="report.status === 'draft'">
               <button
-                @click="handleSubmitReport"
+                @click="showSubmitModal = true"
                 :disabled="expensesStore.loading"
                 class="rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50"
               >
@@ -279,6 +279,47 @@
     </div>
 
     <div
+      v-if="showSubmitModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      @click.self="showSubmitModal = false"
+    >
+      <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4">
+        <h3 class="text-lg font-bold text-gray-900 mb-2">Enviar para Aprovação</h3>
+        <p class="text-sm text-gray-500 mb-4">Selecione o aprovador que irá revisar este relatório.</p>
+        <div class="mb-6">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Aprovador</label>
+          <select
+            v-model="submitTargetUserId"
+            class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+          >
+            <option value="">Selecione um aprovador...</option>
+            <option v-for="member in approverMembers" :key="member.expand?.user?.id ?? member.id" :value="member.expand?.user?.id">
+              {{ member.expand?.user?.name || member.expand?.user?.email }}
+            </option>
+          </select>
+          <p v-if="approverMembers.length === 0" class="mt-2 text-xs text-amber-600">
+            Nenhum aprovador disponível. O relatório será enviado sem destinatário específico.
+          </p>
+        </div>
+        <div class="flex gap-3 justify-end">
+          <button
+            @click="showSubmitModal = false"
+            class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all"
+          >
+            Cancelar
+          </button>
+          <button
+            @click="handleSubmitReport"
+            :disabled="expensesStore.loading || isSubmitDisabled"
+            class="rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-2 text-sm font-semibold text-white shadow hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50"
+          >
+            Confirmar Envio
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
       v-if="showRejectModal"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       @click.self="showRejectModal = false"
@@ -323,7 +364,7 @@
             class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
           >
             <option value="">Selecione um aprovador...</option>
-            <option v-for="member in approverMembers" :key="member.id" :value="member.expand?.user?.id">
+            <option v-for="member in approverMembers" :key="member.expand?.user?.id ?? member.id" :value="member.expand?.user?.id">
               {{ member.expand?.user?.name || member.expand?.user?.email }}
             </option>
           </select>
@@ -375,6 +416,8 @@ const errorMsg = ref('')
 const showItemForm = ref(false)
 const showRejectModal = ref(false)
 const showForwardModal = ref(false)
+const showSubmitModal = ref(false)
+const submitTargetUserId = ref('')
 const forwardTargetUserId = ref('')
 const forwardNotes = ref('')
 const approverMembers = ref<RecordModel[]>([])
@@ -397,6 +440,10 @@ const report = computed(() => expensesStore.currentReport)
 
 const isApprover = computed(() =>
   companyStore.currentUserRole === 'admin' || companyStore.currentUserRole === 'approver'
+)
+
+const isSubmitDisabled = computed(() =>
+  approverMembers.value.length > 0 && !submitTargetUserId.value
 )
 
 function formatCurrency(cents: number): string {
@@ -582,9 +629,11 @@ async function handleSubmitReport() {
   if (!report.value) return
   successMsg.value = ''
   errorMsg.value = ''
-  const result = await expensesStore.submitReport(report.value.id)
+  const result = await expensesStore.submitReport(report.value.id, submitTargetUserId.value || undefined)
   if (result.success) {
     successMsg.value = 'Relatório enviado para aprovação!'
+    showSubmitModal.value = false
+    submitTargetUserId.value = ''
     await loadReport()
   } else {
     errorMsg.value = result.error || 'Erro ao enviar relatório.'

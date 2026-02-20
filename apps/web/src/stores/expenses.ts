@@ -86,12 +86,13 @@ export const useExpensesStore = defineStore('expenses', () => {
     }
   }
 
-  async function submitReport(id: string) {
+  async function submitReport(id: string, approverId?: string) {
     loading.value = true
     try {
       const record = await pb.collection('expense_reports').update(id, {
         status: 'submitted',
         submitted_at: new Date().toISOString(),
+        submitted_to: approverId || null,
       })
       return { success: true, data: record }
     } catch (error: any) {
