@@ -135,11 +135,7 @@ export const useCompanyStore = defineStore('company', () => {
   async function updateMemberRole(membershipId: string, role: string) {
     loading.value = true
     try {
-      await pb.send(`/api/companies/members/${membershipId}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ role }),
-        headers: { 'Content-Type': 'application/json' },
-      })
+      await pb.collection('company_users').update(membershipId, { role })
       return { success: true }
     } catch (error: any) {
       return { success: false, error: error?.message || 'Erro ao atualizar papel do membro.' }
@@ -151,9 +147,7 @@ export const useCompanyStore = defineStore('company', () => {
   async function removeMember(membershipId: string) {
     loading.value = true
     try {
-      await pb.send(`/api/companies/members/${membershipId}`, {
-        method: 'DELETE',
-      })
+      await pb.collection('company_users').delete(membershipId)
       return { success: true }
     } catch (error: any) {
       return { success: false, error: error?.message || 'Erro ao remover membro.' }
