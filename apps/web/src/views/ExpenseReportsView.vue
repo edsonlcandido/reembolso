@@ -159,7 +159,8 @@ watch(() => companyStore.currentCompany, () => {
   loadReports()
 })
 
-onMounted(() => {
-  loadReports()
+onMounted(async () => {
+  await companyStore.fetchMyCompanies()
+  await loadReports()
 })
 </script>
