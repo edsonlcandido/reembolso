@@ -293,6 +293,7 @@ export const useExpensesStore = defineStore('expenses', () => {
     loading.value = true
     try {
       const companyStore = useCompanyStore()
+      await pb.collection('expense_reports').update(id, { submitted_to: targetUserId })
       await pb.collection('approval_actions').create({
         report: id,
         company: companyStore.currentCompany?.id,
