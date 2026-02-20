@@ -97,7 +97,8 @@ watch(() => companyStore.currentCompany, () => {
   loadPendingApprovals()
 })
 
-onMounted(() => {
-  loadPendingApprovals()
+onMounted(async () => {
+  await companyStore.fetchMyCompanies()
+  await loadPendingApprovals()
 })
 </script>
