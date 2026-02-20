@@ -190,6 +190,35 @@ export const useExpensesStore = defineStore('expenses', () => {
     }
   }
 
+  async function returnForRevision(id: string, reason: string) {
+    loading.value = true
+    try {
+      const record = await pb.collection('expense_reports').update(id, {
+        status: 'draft',
+        rejection_reason: reason,
+        submitted_at: null,
+        submitted_to: null,
+        approved_by: null,
+        approved_at: null,
+      })
+      const companyStore = useCompanyStore()
+      try {
+        await pb.collection('approval_actions').create({
+          report: id,
+          company: companyStore.currentCompany?.id,
+          user: pb.authStore.record?.id,
+          action: 'return_for_revision',
+          notes: reason,
+        })
+      } catch (_) {}
+      return { success: true, data: record }
+    } catch (error: any) {
+      return { success: false, error: error?.message || 'Erro ao devolver relatório.' }
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function payReport(id: string, notes?: string) {
     loading.value = true
     try {
@@ -395,6 +424,7 @@ export const useExpensesStore = defineStore('expenses', () => {
     submitReport,
     approveReport,
     rejectReport,
+    returnForRevision,
     payReport,
     markItemPaid,
     forwardReport,

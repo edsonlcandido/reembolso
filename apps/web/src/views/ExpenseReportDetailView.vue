@@ -56,9 +56,9 @@
             </div>
           </div>
 
-          <div v-if="report.status === 'rejected' && report.rejection_reason" class="mb-6 rounded-lg bg-red-50 border border-red-200 p-4">
-            <h3 class="text-sm font-semibold text-red-700 mb-1">Motivo da Rejeição</h3>
-            <p class="text-sm text-red-600">{{ report.rejection_reason }}</p>
+          <div v-if="report.rejection_reason && (report.status === 'rejected' || report.status === 'draft')" class="mb-6 rounded-lg bg-amber-50 border border-amber-200 p-4">
+            <h3 class="text-sm font-semibold text-amber-700 mb-1">{{ report.status === 'draft' ? 'Devolvido para Revisão' : 'Motivo da Rejeição' }}</h3>
+            <p class="text-sm text-amber-700">{{ report.rejection_reason }}</p>
           </div>
 
           <div class="flex flex-wrap gap-3">
@@ -99,10 +99,25 @@
                 Rejeitar
               </button>
               <button
+                @click="showReturnModal = true"
+                class="rounded-lg border border-amber-400 px-5 py-2.5 text-sm font-semibold text-amber-700 hover:bg-amber-50 transition-all"
+              >
+                Devolver para Revisão
+              </button>
+              <button
                 @click="showForwardModal = true"
                 class="rounded-lg border border-blue-300 px-5 py-2.5 text-sm font-semibold text-blue-700 hover:bg-blue-50 transition-all"
               >
                 Encaminhar
+              </button>
+            </template>
+            <template v-if="report.status === 'rejected' && isReportOwner">
+              <button
+                @click="handleReopenReport"
+                :disabled="expensesStore.loading"
+                class="rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50"
+              >
+                Reabrir para Edição
               </button>
             </template>
             <template v-if="report.status === 'approved' && isApprover">
@@ -351,6 +366,38 @@
     </div>
 
     <div
+      v-if="showReturnModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      @click.self="showReturnModal = false"
+    >
+      <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4">
+        <h3 class="text-lg font-bold text-gray-900 mb-2">Devolver para Revisão</h3>
+        <p class="text-sm text-gray-500 mb-4">O relatório voltará para rascunho e o funcionário poderá editá-lo e reenviar.</p>
+        <textarea
+          v-model="returnReason"
+          rows="4"
+          class="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-200"
+          placeholder="Informe o que precisa ser alterado..."
+        />
+        <div class="flex gap-3 justify-end mt-4">
+          <button
+            @click="showReturnModal = false"
+            class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all"
+          >
+            Cancelar
+          </button>
+          <button
+            @click="handleReturnForRevision"
+            :disabled="expensesStore.loading || !returnReason.trim()"
+            class="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600 transition-all disabled:opacity-50"
+          >
+            Devolver
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
       v-if="showForwardModal"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       @click.self="showForwardModal = false"
@@ -415,6 +462,7 @@ const successMsg = ref('')
 const errorMsg = ref('')
 const showItemForm = ref(false)
 const showRejectModal = ref(false)
+const showReturnModal = ref(false)
 const showForwardModal = ref(false)
 const showSubmitModal = ref(false)
 const submitTargetUserId = ref('')
@@ -422,6 +470,7 @@ const forwardTargetUserId = ref('')
 const forwardNotes = ref('')
 const approverMembers = ref<RecordModel[]>([])
 const rejectionReason = ref('')
+const returnReason = ref('')
 const receiptFile = ref<File | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const analyzingReceipt = ref(false)
@@ -440,6 +489,10 @@ const report = computed(() => expensesStore.currentReport)
 
 const isApprover = computed(() =>
   companyStore.currentUserRole === 'admin' || companyStore.currentUserRole === 'approver'
+)
+
+const isReportOwner = computed(() =>
+  report.value?.user === (pb.authStore.record?.id ?? '')
 )
 
 const isSubmitDisabled = computed(() =>
@@ -665,6 +718,34 @@ async function handleRejectReport() {
     await loadReport()
   } else {
     errorMsg.value = result.error || 'Erro ao rejeitar relatório.'
+  }
+}
+
+async function handleReturnForRevision() {
+  if (!report.value) return
+  successMsg.value = ''
+  errorMsg.value = ''
+  const result = await expensesStore.returnForRevision(report.value.id, returnReason.value)
+  if (result.success) {
+    successMsg.value = 'Relatório devolvido para revisão.'
+    showReturnModal.value = false
+    returnReason.value = ''
+    await loadReport()
+  } else {
+    errorMsg.value = result.error || 'Erro ao devolver relatório.'
+  }
+}
+
+async function handleReopenReport() {
+  if (!report.value) return
+  successMsg.value = ''
+  errorMsg.value = ''
+  const result = await expensesStore.returnForRevision(report.value.id, report.value.rejection_reason || '')
+  if (result.success) {
+    successMsg.value = 'Relatório reaberto como rascunho. Você já pode editá-lo.'
+    await loadReport()
+  } else {
+    errorMsg.value = result.error || 'Erro ao reabrir relatório.'
   }
 }
 
