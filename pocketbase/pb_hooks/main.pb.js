@@ -129,6 +129,57 @@ routerAdd("POST", "/api/users/find-by-email", (e) => {
 }, $apis.requireAuth())
 
 /**
+ * Endpoint: Update a company member's role (server-side operation)
+ *
+ * Verifies that the requesting user is an admin of the company before
+ * updating the membership role. This bypasses the self-referential
+ * updateRule on the company_users collection that can fail in practice.
+ */
+routerAdd("PATCH", "/api/companies/members/{membershipId}", (e) => {
+  const membershipId = e.pathValue("membershipId")
+  const body = e.requestInfo().body
+  const role = body.role
+
+  const validRoles = ["admin", "approver", "employee"]
+  if (!role || !validRoles.includes(role)) {
+    return e.json(400, { error: "Role inválido. Use: admin, approver ou employee." })
+  }
+
+  let membership
+  try {
+    membership = $app.findRecordById("company_users", membershipId)
+  } catch (err) {
+    return e.json(404, { error: "Membro não encontrado." })
+  }
+
+  const companyId = membership.getString("company")
+
+  // Verify the requesting user is an admin of this company
+  try {
+    const adminMemberships = $app.findRecordsByFilter(
+      "company_users",
+      `company = "${companyId}" && user = "${e.auth.id}" && role = "admin"`,
+      "",
+      1,
+      0,
+    )
+    if (!adminMemberships || adminMemberships.length === 0) {
+      return e.json(403, { error: "Apenas administradores podem alterar papéis." })
+    }
+  } catch (err) {
+    return e.json(500, { error: "Erro ao verificar permissões." })
+  }
+
+  try {
+    membership.set("role", role)
+    $app.save(membership)
+    return e.json(200, { success: true })
+  } catch (err) {
+    return e.json(500, { error: "Erro ao atualizar papel do membro." })
+  }
+}, $apis.requireAuth())
+
+/**
  * Endpoint: Remove a company member (server-side operation)
  *
  * Verifies that the requesting user is an admin of the company before
