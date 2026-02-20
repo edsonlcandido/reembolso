@@ -84,7 +84,7 @@
                 Excluir
               </button>
             </template>
-            <template v-if="report.status === 'submitted'">
+            <template v-if="report.status === 'submitted' && isApprover">
               <button
                 @click="handleApproveReport"
                 :disabled="expensesStore.loading"
@@ -97,6 +97,21 @@
                 class="rounded-lg bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700 transition-all"
               >
                 Rejeitar
+              </button>
+              <button
+                @click="showForwardModal = true"
+                class="rounded-lg border border-blue-300 px-5 py-2.5 text-sm font-semibold text-blue-700 hover:bg-blue-50 transition-all"
+              >
+                Encaminhar
+              </button>
+            </template>
+            <template v-if="report.status === 'approved' && isApprover">
+              <button
+                @click="handlePayReport"
+                :disabled="expensesStore.loading"
+                class="rounded-lg bg-purple-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-purple-700 transition-all disabled:opacity-50"
+              >
+                Pagar Tudo
               </button>
             </template>
             <router-link
@@ -221,13 +236,29 @@
                     <span v-if="item.category" class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
                       {{ categoryLabel(item.category) }}
                     </span>
+                    <span v-if="item.paid" class="px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
+                      Pago
+                    </span>
                   </div>
                   <p v-if="item.merchant" class="text-sm text-gray-600">{{ item.merchant }}</p>
                   <p v-if="item.description" class="text-sm text-gray-500">{{ item.description }}</p>
                   <p v-if="item.date" class="text-xs text-gray-400 mt-1">{{ new Date(item.date).toLocaleDateString('pt-BR') }}</p>
                 </div>
-                <div v-if="report.status === 'draft'" class="flex gap-2">
+                <div class="flex gap-2 items-center">
+                  <template v-if="isApprover && ['approved', 'partially_paid', 'paid'].includes(report.status)">
+                    <label class="flex items-center gap-2 cursor-pointer select-none" :title="item.paid ? 'Clique para desmarcar como pago' : 'Clique para marcar como pago'">
+                      <input
+                        type="checkbox"
+                        :checked="item.paid"
+                        :disabled="expensesStore.loading"
+                        @change="handleToggleItemPaid(item)"
+                        class="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 disabled:opacity-50"
+                      />
+                      <span class="text-xs text-gray-600 whitespace-nowrap">Pagar</span>
+                    </label>
+                  </template>
                   <button
+                    v-if="report.status === 'draft'"
                     @click="handleRemoveItem(item.id)"
                     :disabled="expensesStore.loading"
                     class="rounded-lg border border-red-300 p-2 text-red-600 hover:bg-red-50 transition-all disabled:opacity-50"
@@ -277,6 +308,52 @@
         </div>
       </div>
     </div>
+
+    <div
+      v-if="showForwardModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      @click.self="showForwardModal = false"
+    >
+      <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4">
+        <h3 class="text-lg font-bold text-gray-900 mb-4">Encaminhar para Aprovador</h3>
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Aprovador</label>
+          <select
+            v-model="forwardTargetUserId"
+            class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+          >
+            <option value="">Selecione um aprovador...</option>
+            <option v-for="member in approverMembers" :key="member.id" :value="member.expand?.user?.id">
+              {{ member.expand?.user?.name || member.expand?.user?.email }}
+            </option>
+          </select>
+        </div>
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Observação</label>
+          <textarea
+            v-model="forwardNotes"
+            rows="3"
+            class="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+            placeholder="Adicione uma observação para o próximo aprovador..."
+          />
+        </div>
+        <div class="flex gap-3 justify-end">
+          <button
+            @click="showForwardModal = false"
+            class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all"
+          >
+            Cancelar
+          </button>
+          <button
+            @click="handleForwardReport"
+            :disabled="expensesStore.loading || !forwardTargetUserId"
+            class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-all disabled:opacity-50"
+          >
+            Encaminhar
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -297,6 +374,10 @@ const successMsg = ref('')
 const errorMsg = ref('')
 const showItemForm = ref(false)
 const showRejectModal = ref(false)
+const showForwardModal = ref(false)
+const forwardTargetUserId = ref('')
+const forwardNotes = ref('')
+const approverMembers = ref<RecordModel[]>([])
 const rejectionReason = ref('')
 const receiptFile = ref<File | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
@@ -314,6 +395,10 @@ const itemForm = ref({
 
 const report = computed(() => expensesStore.currentReport)
 
+const isApprover = computed(() =>
+  companyStore.currentUserRole === 'admin' || companyStore.currentUserRole === 'approver'
+)
+
 function formatCurrency(cents: number): string {
   return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
@@ -325,6 +410,7 @@ function statusBadgeClass(status: string): string {
     case 'approved': return 'bg-green-200 text-green-800'
     case 'rejected': return 'bg-red-200 text-red-800'
     case 'paid': return 'bg-purple-200 text-purple-800'
+    case 'partially_paid': return 'bg-orange-200 text-orange-800'
     default: return 'bg-gray-200 text-gray-800'
   }
 }
@@ -336,6 +422,7 @@ function statusLabel(status: string): string {
     case 'approved': return 'Aprovado'
     case 'rejected': return 'Rejeitado'
     case 'paid': return 'Pago'
+    case 'partially_paid': return 'Pago Parcialmente'
     default: return status
   }
 }
@@ -545,6 +632,60 @@ async function handleDeleteReport() {
   }
 }
 
+async function handlePayReport() {
+  if (!report.value) return
+  successMsg.value = ''
+  errorMsg.value = ''
+  const result = await expensesStore.payReport(report.value.id)
+  if (result.success) {
+    successMsg.value = 'Relatório marcado como pago!'
+    await loadReport()
+  } else {
+    errorMsg.value = result.error || 'Erro ao pagar relatório.'
+  }
+}
+
+async function handleToggleItemPaid(item: RecordModel) {
+  if (!report.value) return
+  successMsg.value = ''
+  errorMsg.value = ''
+  const result = await expensesStore.markItemPaid(item.id, report.value.id, !item.paid)
+  if (result.success) {
+    await loadReport()
+  } else {
+    errorMsg.value = result.error || 'Erro ao atualizar pagamento do item.'
+  }
+}
+
+async function handleForwardReport() {
+  if (!report.value || !forwardTargetUserId.value) return
+  successMsg.value = ''
+  errorMsg.value = ''
+  const result = await expensesStore.forwardReport(report.value.id, forwardTargetUserId.value, forwardNotes.value)
+  if (result.success) {
+    successMsg.value = 'Relatório encaminhado com sucesso!'
+    showForwardModal.value = false
+    forwardTargetUserId.value = ''
+    forwardNotes.value = ''
+  } else {
+    errorMsg.value = result.error || 'Erro ao encaminhar relatório.'
+  }
+}
+
+async function fetchApproverMembers() {
+  const companyId = companyStore.currentCompany?.id
+  if (!companyId) return
+  try {
+    const records = await pb.collection('company_users').getFullList({
+      filter: `company="${companyId}" && (role="approver" || role="admin") && active=true`,
+      expand: 'user',
+    })
+    approverMembers.value = records.filter(m => m.expand?.user?.id !== pb.authStore.record?.id)
+  } catch {
+    approverMembers.value = []
+  }
+}
+
 async function loadReport() {
   const id = route.params.id as string
   const result = await expensesStore.getReport(id)
@@ -558,6 +699,6 @@ async function loadReport() {
 
 onMounted(async () => {
   await companyStore.fetchMyCompanies()
-  await Promise.all([loadReport(), fetchCategories()])
+  await Promise.all([loadReport(), fetchCategories(), fetchApproverMembers()])
 })
 </script>

@@ -111,6 +111,7 @@ const tabs = [
   { label: 'Aprovado', value: 'approved' },
   { label: 'Rejeitado', value: 'rejected' },
   { label: 'Pago', value: 'paid' },
+  { label: 'Pago Parcialmente', value: 'partially_paid' },
 ]
 
 function formatCurrency(cents: number): string {
@@ -124,6 +125,7 @@ function statusBadgeClass(status: string): string {
     case 'approved': return 'bg-green-100 text-green-700'
     case 'rejected': return 'bg-red-100 text-red-700'
     case 'paid': return 'bg-purple-100 text-purple-700'
+    case 'partially_paid': return 'bg-orange-100 text-orange-700'
     default: return 'bg-gray-100 text-gray-700'
   }
 }
@@ -135,6 +137,7 @@ function statusLabel(status: string): string {
     case 'approved': return 'Aprovado'
     case 'rejected': return 'Rejeitado'
     case 'paid': return 'Pago'
+    case 'partially_paid': return 'Pago Parcialmente'
     default: return status
   }
 }

@@ -101,7 +101,7 @@ export const useExpensesStore = defineStore('expenses', () => {
     }
   }
 
-  async function approveReport(id: string) {
+  async function approveReport(id: string, notes?: string) {
     loading.value = true
     try {
       const record = await pb.collection('expense_reports').update(id, {
@@ -109,6 +109,16 @@ export const useExpensesStore = defineStore('expenses', () => {
         approved_by: pb.authStore.record?.id,
         approved_at: new Date().toISOString(),
       })
+      const companyStore = useCompanyStore()
+      try {
+        await pb.collection('approval_actions').create({
+          report: id,
+          company: companyStore.currentCompany?.id,
+          user: pb.authStore.record?.id,
+          action: 'approve',
+          notes: notes || '',
+        })
+      } catch (_) {}
       return { success: true, data: record }
     } catch (error: any) {
       return { success: false, error: error?.message || 'Erro ao aprovar relatório.' }
@@ -126,11 +136,124 @@ export const useExpensesStore = defineStore('expenses', () => {
         approved_by: pb.authStore.record?.id,
         approved_at: new Date().toISOString(),
       })
+      const companyStore = useCompanyStore()
+      try {
+        await pb.collection('approval_actions').create({
+          report: id,
+          company: companyStore.currentCompany?.id,
+          user: pb.authStore.record?.id,
+          action: 'reject',
+          notes: reason,
+        })
+      } catch (_) {}
       return { success: true, data: record }
     } catch (error: any) {
       return { success: false, error: error?.message || 'Erro ao rejeitar relatório.' }
     } finally {
       loading.value = false
+    }
+  }
+
+  async function payReport(id: string, notes?: string) {
+    loading.value = true
+    try {
+      const record = await pb.collection('expense_reports').update(id, {
+        status: 'paid',
+      })
+      const companyStore = useCompanyStore()
+      try {
+        await pb.collection('approval_actions').create({
+          report: id,
+          company: companyStore.currentCompany?.id,
+          user: pb.authStore.record?.id,
+          action: 'pay',
+          notes: notes || '',
+        })
+      } catch (_) {}
+      return { success: true, data: record }
+    } catch (error: any) {
+      return { success: false, error: error?.message || 'Erro ao pagar relatório.' }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function markItemPaid(itemId: string, reportId: string, paid: boolean) {
+    loading.value = true
+    try {
+      await pb.collection('expense_items').update(itemId, {
+        paid,
+        paid_by: paid ? pb.authStore.record?.id : null,
+        paid_at: paid ? new Date().toISOString() : null,
+      })
+      // Recalculate report status based on item payment state
+      const allItems = await pb.collection('expense_items').getFullList({
+        filter: `report="${reportId}"`,
+      })
+      if (allItems.length > 0) {
+        const paidCount = allItems.filter(i => i.paid).length
+        let newStatus: string
+        if (paidCount === 0) {
+          newStatus = 'approved'
+        } else if (paidCount === allItems.length) {
+          newStatus = 'paid'
+        } else {
+          newStatus = 'partially_paid'
+        }
+        const report = await pb.collection('expense_reports').getOne(reportId)
+        if (['approved', 'paid', 'partially_paid'].includes(report.status)) {
+          const companyStore = useCompanyStore()
+          await pb.collection('expense_reports').update(reportId, { status: newStatus })
+          if (newStatus === 'paid' || newStatus === 'partially_paid') {
+            try {
+              await pb.collection('approval_actions').create({
+                report: reportId,
+                company: companyStore.currentCompany?.id,
+                user: pb.authStore.record?.id,
+                action: newStatus === 'paid' ? 'pay' : 'partially_pay',
+              })
+            } catch (_) {}
+          }
+        }
+      }
+      return { success: true }
+    } catch (error: any) {
+      return { success: false, error: error?.message || 'Erro ao atualizar pagamento do item.' }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function forwardReport(id: string, targetUserId: string, notes: string) {
+    loading.value = true
+    try {
+      const companyStore = useCompanyStore()
+      await pb.collection('approval_actions').create({
+        report: id,
+        company: companyStore.currentCompany?.id,
+        user: pb.authStore.record?.id,
+        action: 'forward',
+        notes,
+        forwarded_to: targetUserId,
+      })
+      return { success: true }
+    } catch (error: any) {
+      return { success: false, error: error?.message || 'Erro ao encaminhar relatório.' }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function fetchApprovalActions(reportId: string) {
+    try {
+      const records = await pb.collection('approval_actions').getFullList({
+        filter: `report="${reportId}"`,
+        sort: '-created',
+        expand: 'user,forwarded_to',
+      })
+      return { success: true, data: records }
+    } catch (error: any) {
+      return { success: false, error: error?.message || 'Erro ao buscar ações de aprovação.' }
     }
   }
 
@@ -235,6 +358,10 @@ export const useExpensesStore = defineStore('expenses', () => {
     submitReport,
     approveReport,
     rejectReport,
+    payReport,
+    markItemPaid,
+    forwardReport,
+    fetchApprovalActions,
     deleteReport,
     fetchItems,
     addItem,
