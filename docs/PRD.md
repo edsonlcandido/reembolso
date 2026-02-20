@@ -110,8 +110,8 @@ Com o avanço de tecnologias de IA e OCR, há uma oportunidade clara de:
 **Descrição:** Permitir o cadastro de empresas no sistema  
 **Prioridade:** Alta  
 **Critérios de Aceitação:**
-- [ ] Campos obrigatórios: Nome, CNPJ, Email, Telefone
-- [ ] Campos opcionais: Endereço, Logo, Configurações
+- [x] Campos obrigatórios: Nome, CNPJ, Email, Telefone
+- [x] Campos opcionais: Endereço, Logo, Configurações
 - [ ] Validação de CNPJ único
 - [ ] Upload de logo da empresa
 - [ ] Status ativo/inativo
@@ -120,7 +120,7 @@ Com o avanço de tecnologias de IA e OCR, há uma oportunidade clara de:
 **Descrição:** Suporte para múltiplas empresas independentes  
 **Prioridade:** Alta  
 **Critérios de Aceitação:**
-- [ ] Dados completamente isolados entre empresas
+- [x] Dados completamente isolados entre empresas
 - [ ] Cada empresa tem suas próprias configurações
 - [ ] Políticas de reembolso por empresa
 - [ ] Centros de custo por empresa
@@ -130,7 +130,7 @@ Com o avanço de tecnologias de IA e OCR, há uma oportunidade clara de:
 **Prioridade:** Média  
 **Critérios de Aceitação:**
 - [ ] Moeda padrão
-- [ ] Categorias de despesas customizáveis
+- [x] Categorias de despesas customizáveis
 - [ ] Limites de valores
 - [ ] Políticas de aprovação
 - [ ] Templates de emails
@@ -141,29 +141,29 @@ Com o avanço de tecnologias de IA e OCR, há uma oportunidade clara de:
 **Descrição:** Registro e autenticação de usuários  
 **Prioridade:** Alta  
 **Critérios de Aceitação:**
-- [ ] Registro com email e senha
+- [x] Registro com email e senha
 - [ ] Validação de email
-- [ ] Login com email/senha
+- [x] Login com email/senha
 - [ ] Recuperação de senha
-- [ ] Perfil de usuário editável
+- [x] Perfil de usuário editável
 
 #### RF005 - Papéis e Permissões
 **Descrição:** Sistema de roles e permissões  
 **Prioridade:** Alta  
 **Critérios de Aceitação:**
 - [ ] Super Admin: acesso total ao sistema
-- [ ] Admin Empresa: gerencia sua empresa
-- [ ] Aprovador: aprova/rejeita despesas
-- [ ] Funcionário: cria relatórios de despesas
-- [ ] Permissões granulares por funcionalidade
+- [x] Admin Empresa: gerencia sua empresa
+- [x] Aprovador: aprova/rejeita despesas
+- [x] Funcionário: cria relatórios de despesas
+- [x] Permissões granulares por funcionalidade
 
 #### RF006 - Associação Usuário-Empresa
 **Descrição:** Vincular usuários a empresas  
 **Prioridade:** Alta  
 **Critérios de Aceitação:**
-- [ ] Usuário pode pertencer a múltiplas empresas
+- [x] Usuário pode pertencer a múltiplas empresas
 - [ ] Diferentes roles por empresa
-- [ ] Troca rápida entre empresas
+- [x] Troca rápida entre empresas
 - [ ] Histórico de vínculos
 
 ### 4.3 Gestão de Aprovadores
@@ -193,40 +193,40 @@ Com o avanço de tecnologias de IA e OCR, há uma oportunidade clara de:
 **Descrição:** Criar relatórios de despesas  
 **Prioridade:** Alta  
 **Critérios de Aceitação:**
-- [ ] Título do relatório
-- [ ] Período (data início/fim)
-- [ ] Empresa/Centro de custo
-- [ ] Projeto (opcional)
-- [ ] Descrição/Justificativa
-- [ ] Status: Rascunho, Enviado, Aprovado, Rejeitado, Pago
+- [x] Título do relatório
+- [x] Período (data início/fim)
+- [x] Empresa/Centro de custo
+- [x] Projeto (opcional)
+- [x] Descrição/Justificativa
+- [x] Status: Rascunho, Enviado, Aprovado, Rejeitado, Pago
 
 #### RF010 - Itens de Despesa
 **Descrição:** Adicionar itens individuais ao relatório  
 **Prioridade:** Alta  
 **Critérios de Aceitação:**
-- [ ] Data e hora da despesa
-- [ ] Categoria (Alimentação, Transporte, Hospedagem, etc.)
-- [ ] Valor
-- [ ] Descrição
-- [ ] Anexo (foto do cupom)
-- [ ] Observações
+- [x] Data e hora da despesa
+- [x] Categoria (Alimentação, Transporte, Hospedagem, etc.)
+- [x] Valor
+- [x] Descrição
+- [x] Anexo (foto do cupom)
+- [x] Observações
 
 #### RF011 - Upload e OCR de Cupons
 **Descrição:** Captura de foto e extração automática de dados  
 **Prioridade:** Alta (Feature Principal)  
 **Critérios de Aceitação:**
-- [ ] Upload via câmera do celular/desktop
-- [ ] Suporte para JPG, PNG, PDF
+- [x] Upload via câmera do celular/desktop
+- [x] Suporte para JPG, PNG
 - [ ] Preview da imagem antes de processar
-- [ ] Processamento via LLM/OCR
-- [ ] Extração automática de:
-  - [ ] Valor total
-  - [ ] Data da compra
-  - [ ] Hora da compra
-  - [ ] Estabelecimento/Fornecedor
-  - [ ] Categoria sugerida
-  - [ ] Itens do cupom (se disponível)
-- [ ] Usuário pode corrigir dados extraídos
+- [x] Processamento via LLM/OCR
+- [x] Extração automática de:
+  - [x] Valor total
+  - [x] Data da compra
+  - [x] Hora da compra
+  - [x] Estabelecimento/Fornecedor
+  - [x] Categoria sugerida
+  - [x] Itens do cupom (se disponível)
+- [x] Usuário pode corrigir dados extraídos
 - [ ] Indicador de confiança da extração
 - [ ] Fallback para digitação manual se OCR falhar
 
