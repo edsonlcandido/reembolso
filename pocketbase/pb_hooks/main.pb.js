@@ -21,23 +21,6 @@ routerAdd("GET", "/app/{path...}", $apis.static("pb_public/app", true))
 onRecordAfterCreateSuccess((e) => {
   const companyId = e.record.id
 
-  // Link the authenticated creator as admin of the new company.
-  // This runs server-side and bypasses the company_users createRule.
-  const authRecord = e.requestInfo().auth
-  if (authRecord) {
-    try {
-      const companyUsersCol = $app.findCollectionByNameOrId("company_users")
-      const membership = new Record(companyUsersCol)
-      membership.set("company", companyId)
-      membership.set("user", authRecord.id)
-      membership.set("role", "admin")
-      membership.set("active", true)
-      $app.save(membership)
-    } catch (err) {
-      console.error("Erro ao criar vínculo admin com empresa:", err)
-    }
-  }
-
   const defaultCategories = [
     { name: "Alimentação", icon: "🍔", color: "#ef4444" },
     { name: "Transporte", icon: "🚗", color: "#3b82f6" },
@@ -64,6 +47,61 @@ onRecordAfterCreateSuccess((e) => {
 
   return e.next()
 }, "companies")
+
+/**
+ * Endpoint: Criação de empresa com vínculo do admin
+ *
+ * Cria a empresa e automaticamente vincula o usuário autenticado como
+ * administrador da empresa em uma única operação server-side, evitando
+ * a restrição da createRule da coleção company_users que exige que o
+ * usuário já seja admin.
+ *
+ * Retorna o registro da empresa criada.
+ */
+routerAdd("POST", "/api/companies/create", (e) => {
+  const body = e.requestInfo().body
+
+  if (!body.name || !body.slug) {
+    return e.json(400, { error: "Nome e slug são obrigatórios" })
+  }
+
+  let company
+  try {
+    // Create the company record (triggers onRecordAfterCreateSuccess for categories)
+    const companiesCol = $app.findCollectionByNameOrId("companies")
+    company = new Record(companiesCol)
+    company.set("name", body.name)
+    company.set("slug", body.slug)
+    if (body.cnpj) company.set("cnpj", body.cnpj)
+    if (body.email) company.set("email", body.email)
+    if (body.phone) company.set("phone", body.phone)
+    if (body.address) company.set("address", body.address)
+    company.set("active", true)
+    $app.save(company)
+  } catch (err) {
+    return e.json(400, { error: "Erro ao criar empresa: " + String(err) })
+  }
+
+  try {
+    // Link the creator as admin — done server-side to bypass the createRule
+    const companyUsersCol = $app.findCollectionByNameOrId("company_users")
+    const membership = new Record(companyUsersCol)
+    membership.set("company", company.id)
+    membership.set("user", e.auth.id)
+    membership.set("role", "admin")
+    membership.set("active", true)
+    $app.save(membership)
+  } catch (err) {
+    // Roll back the company creation so the user is not left with an
+    // inaccessible company record.
+    try {
+      $app.delete(company)
+    } catch (_) {}
+    return e.json(500, { error: "Erro ao criar vínculo admin com empresa: " + String(err) })
+  }
+
+  return e.json(200, company)
+}, $apis.requireAuth())
 
 /**
  * Endpoint: Leitura de comprovante via IA (OpenRouter)
