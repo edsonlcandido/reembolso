@@ -56,16 +56,16 @@
             </div>
           </div>
 
-          <div v-if="report.status === 'rejected' && report.rejection_reason" class="mb-6 rounded-lg bg-red-50 border border-red-200 p-4">
-            <h3 class="text-sm font-semibold text-red-700 mb-1">Motivo da Rejeição</h3>
-            <p class="text-sm text-red-600">{{ report.rejection_reason }}</p>
+          <div v-if="report.rejection_reason && (report.status === 'rejected' || report.status === 'draft')" class="mb-6 rounded-lg bg-amber-50 border border-amber-200 p-4">
+            <h3 class="text-sm font-semibold text-amber-700 mb-1">{{ report.status === 'draft' ? 'Devolvido para Revisão' : 'Motivo da Rejeição' }}</h3>
+            <p class="text-sm text-amber-700">{{ report.rejection_reason }}</p>
           </div>
 
           <div class="flex flex-wrap gap-3">
             <template v-if="report.status === 'draft'">
               <button
-                @click="handleSubmitReport"
-                :disabled="expensesStore.loading"
+                @click="showSubmitModal = true"
+                :disabled="submitting || expensesStore.loading"
                 class="rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50"
               >
                 Enviar para Aprovação
@@ -78,25 +78,58 @@
               </router-link>
               <button
                 @click="handleDeleteReport"
-                :disabled="expensesStore.loading"
+                :disabled="submitting || expensesStore.loading"
                 class="rounded-lg border border-red-300 px-5 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 transition-all disabled:opacity-50"
               >
                 Excluir
               </button>
             </template>
-            <template v-if="report.status === 'submitted'">
+            <template v-if="report.status === 'submitted' && isApprover">
               <button
                 @click="handleApproveReport"
-                :disabled="expensesStore.loading"
+                :disabled="submitting || expensesStore.loading"
                 class="rounded-lg bg-green-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-green-700 transition-all disabled:opacity-50"
               >
                 Aprovar
               </button>
               <button
                 @click="showRejectModal = true"
-                class="rounded-lg bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700 transition-all"
+                :disabled="submitting"
+                class="rounded-lg bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700 transition-all disabled:opacity-50"
               >
                 Rejeitar
+              </button>
+              <button
+                @click="showReturnModal = true"
+                :disabled="submitting"
+                class="rounded-lg border border-amber-400 px-5 py-2.5 text-sm font-semibold text-amber-700 hover:bg-amber-50 transition-all disabled:opacity-50"
+              >
+                Devolver para Revisão
+              </button>
+              <button
+                @click="showForwardModal = true"
+                :disabled="submitting"
+                class="rounded-lg border border-blue-300 px-5 py-2.5 text-sm font-semibold text-blue-700 hover:bg-blue-50 transition-all disabled:opacity-50"
+              >
+                Encaminhar
+              </button>
+            </template>
+            <template v-if="report.status === 'rejected' && isReportOwner">
+              <button
+                @click="handleReopenReport"
+                :disabled="submitting || expensesStore.loading"
+                class="rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50"
+              >
+                Reabrir para Edição
+              </button>
+            </template>
+            <template v-if="report.status === 'approved' && isApprover">
+              <button
+                @click="handlePayReport"
+                :disabled="submitting || expensesStore.loading"
+                class="rounded-lg bg-purple-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-purple-700 transition-all disabled:opacity-50"
+              >
+                Pagar Tudo
               </button>
             </template>
             <router-link
@@ -138,7 +171,7 @@
                   <svg v-if="!analyzingReceipt" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                   </svg>
-                  <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 animate-spin" fill="none" style="animation-direction: reverse;" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
                   {{ analyzingReceipt ? 'Analisando...' : 'Analisar com IA' }}
@@ -183,7 +216,7 @@
             <div class="flex gap-3">
               <button
                 type="submit"
-                :disabled="expensesStore.loading"
+                :disabled="submitting || expensesStore.loading"
                 class="rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-2.5 text-sm font-semibold text-white shadow hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50"
               >
                 Salvar
@@ -221,15 +254,31 @@
                     <span v-if="item.category" class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
                       {{ categoryLabel(item.category) }}
                     </span>
+                    <span v-if="item.paid" class="px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
+                      Pago
+                    </span>
                   </div>
                   <p v-if="item.merchant" class="text-sm text-gray-600">{{ item.merchant }}</p>
                   <p v-if="item.description" class="text-sm text-gray-500">{{ item.description }}</p>
                   <p v-if="item.date" class="text-xs text-gray-400 mt-1">{{ new Date(item.date).toLocaleDateString('pt-BR') }}</p>
                 </div>
-                <div v-if="report.status === 'draft'" class="flex gap-2">
+                <div class="flex gap-2 items-center">
+                  <template v-if="isApprover && ['approved', 'partially_paid', 'paid'].includes(report.status)">
+                    <label class="flex items-center gap-2 cursor-pointer select-none" :title="item.paid ? 'Clique para desmarcar como pago' : 'Clique para marcar como pago'">
+                      <input
+                        type="checkbox"
+                        :checked="item.paid"
+                        :disabled="submitting || expensesStore.loading"
+                        @change="handleToggleItemPaid(item)"
+                        class="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 disabled:opacity-50"
+                      />
+                      <span class="text-xs text-gray-600 whitespace-nowrap">Pagar</span>
+                    </label>
+                  </template>
                   <button
+                    v-if="report.status === 'draft'"
                     @click="handleRemoveItem(item.id)"
-                    :disabled="expensesStore.loading"
+                    :disabled="submitting || expensesStore.loading"
                     class="rounded-lg border border-red-300 p-2 text-red-600 hover:bg-red-50 transition-all disabled:opacity-50"
                   >
                     <TrashIcon class="h-4 w-4" />
@@ -245,6 +294,47 @@
     <div v-else class="bg-white rounded-2xl shadow-xl p-12 text-center">
       <p class="text-gray-500">Relatório não encontrado.</p>
       <router-link to="/reports" class="mt-4 inline-block text-blue-600 hover:underline">Voltar aos relatórios</router-link>
+    </div>
+
+    <div
+      v-if="showSubmitModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      @click.self="showSubmitModal = false"
+    >
+      <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4">
+        <h3 class="text-lg font-bold text-gray-900 mb-2">Enviar para Aprovação</h3>
+        <p class="text-sm text-gray-500 mb-4">Selecione o aprovador que irá revisar este relatório.</p>
+        <div class="mb-6">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Aprovador</label>
+          <select
+            v-model="submitTargetUserId"
+            class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+          >
+            <option value="">Selecione um aprovador...</option>
+            <option v-for="member in approverMembers" :key="member.expand?.user?.id ?? member.id" :value="member.expand?.user?.id">
+              {{ member.expand?.user?.name || member.expand?.user?.email }}
+            </option>
+          </select>
+          <p v-if="approverMembers.length === 0" class="mt-2 text-xs text-amber-600">
+            Nenhum aprovador disponível. O relatório será enviado sem destinatário específico.
+          </p>
+        </div>
+        <div class="flex gap-3 justify-end">
+          <button
+            @click="showSubmitModal = false"
+            class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all"
+          >
+            Cancelar
+          </button>
+          <button
+            @click="handleSubmitReport"
+            :disabled="submitting || expensesStore.loading || isSubmitDisabled"
+            class="rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-2 text-sm font-semibold text-white shadow hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50"
+          >
+            Confirmar Envio
+          </button>
+        </div>
+      </div>
     </div>
 
     <div
@@ -269,10 +359,88 @@
           </button>
           <button
             @click="handleRejectReport"
-            :disabled="expensesStore.loading || !rejectionReason.trim()"
+            :disabled="submitting || expensesStore.loading || !rejectionReason.trim()"
             class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-all disabled:opacity-50"
           >
             Confirmar Rejeição
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="showReturnModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      @click.self="showReturnModal = false"
+    >
+      <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4">
+        <h3 class="text-lg font-bold text-gray-900 mb-2">Devolver para Revisão</h3>
+        <p class="text-sm text-gray-500 mb-4">O relatório voltará para rascunho e o funcionário poderá editá-lo e reenviar.</p>
+        <textarea
+          v-model="returnReason"
+          rows="4"
+          class="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-200"
+          placeholder="Informe o que precisa ser alterado..."
+        />
+        <div class="flex gap-3 justify-end mt-4">
+          <button
+            @click="showReturnModal = false"
+            class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all"
+          >
+            Cancelar
+          </button>
+          <button
+            @click="handleReturnForRevision"
+            :disabled="submitting || expensesStore.loading || !returnReason.trim()"
+            class="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600 transition-all disabled:opacity-50"
+          >
+            Devolver
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="showForwardModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      @click.self="showForwardModal = false"
+    >
+      <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4">
+        <h3 class="text-lg font-bold text-gray-900 mb-4">Encaminhar para Aprovador</h3>
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Aprovador</label>
+          <select
+            v-model="forwardTargetUserId"
+            class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+          >
+            <option value="">Selecione um aprovador...</option>
+            <option v-for="member in approverMembers" :key="member.expand?.user?.id ?? member.id" :value="member.expand?.user?.id">
+              {{ member.expand?.user?.name || member.expand?.user?.email }}
+            </option>
+          </select>
+        </div>
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Observação</label>
+          <textarea
+            v-model="forwardNotes"
+            rows="3"
+            class="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+            placeholder="Adicione uma observação para o próximo aprovador..."
+          />
+        </div>
+        <div class="flex gap-3 justify-end">
+          <button
+            @click="showForwardModal = false"
+            class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all"
+          >
+            Cancelar
+          </button>
+          <button
+            @click="handleForwardReport"
+            :disabled="submitting || expensesStore.loading || !forwardTargetUserId"
+            class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-all disabled:opacity-50"
+          >
+            Encaminhar
           </button>
         </div>
       </div>
@@ -297,10 +465,19 @@ const successMsg = ref('')
 const errorMsg = ref('')
 const showItemForm = ref(false)
 const showRejectModal = ref(false)
+const showReturnModal = ref(false)
+const showForwardModal = ref(false)
+const showSubmitModal = ref(false)
+const submitTargetUserId = ref('')
+const forwardTargetUserId = ref('')
+const forwardNotes = ref('')
+const approverMembers = ref<RecordModel[]>([])
 const rejectionReason = ref('')
+const returnReason = ref('')
 const receiptFile = ref<File | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const analyzingReceipt = ref(false)
+const submitting = ref(false)
 const categories = ref<RecordModel[]>([])
 
 const itemForm = ref({
@@ -314,6 +491,18 @@ const itemForm = ref({
 
 const report = computed(() => expensesStore.currentReport)
 
+const isApprover = computed(() =>
+  companyStore.currentUserRole === 'admin' || companyStore.currentUserRole === 'approver'
+)
+
+const isReportOwner = computed(() =>
+  report.value?.user === (pb.authStore.record?.id ?? '')
+)
+
+const isSubmitDisabled = computed(() =>
+  approverMembers.value.length > 0 && !submitTargetUserId.value
+)
+
 function formatCurrency(cents: number): string {
   return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
@@ -325,6 +514,7 @@ function statusBadgeClass(status: string): string {
     case 'approved': return 'bg-green-200 text-green-800'
     case 'rejected': return 'bg-red-200 text-red-800'
     case 'paid': return 'bg-purple-200 text-purple-800'
+    case 'partially_paid': return 'bg-orange-200 text-orange-800'
     default: return 'bg-gray-200 text-gray-800'
   }
 }
@@ -336,6 +526,7 @@ function statusLabel(status: string): string {
     case 'approved': return 'Aprovado'
     case 'rejected': return 'Rejeitado'
     case 'paid': return 'Pago'
+    case 'partially_paid': return 'Pago Parcialmente'
     default: return status
   }
 }
@@ -439,6 +630,8 @@ async function handleAddItem() {
     return
   }
 
+  submitting.value = true
+
   const data: any = {
     report: report.value.id,
     amount: amountCents,
@@ -449,32 +642,34 @@ async function handleAddItem() {
     notes: itemForm.value.notes || undefined,
   }
 
-  if (receiptFile.value) {
-    const formData = new FormData()
-    Object.entries(data).forEach(([key, value]) => {
-      if (value !== undefined) formData.append(key, String(value))
-    })
-    formData.append('receipt_image', receiptFile.value)
-    try {
+  try {
+    if (receiptFile.value) {
+      const formData = new FormData()
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== undefined) formData.append(key, String(value))
+      })
+      formData.append('receipt_image', receiptFile.value)
       await pb.collection('expense_items').create(formData)
       await expensesStore.recalculateTotal(report.value.id)
       await loadReport()
       successMsg.value = 'Despesa adicionada com sucesso!'
       showItemForm.value = false
       resetItemForm()
-    } catch (err: any) {
-      errorMsg.value = err?.message || 'Erro ao adicionar despesa.'
-    }
-  } else {
-    const result = await expensesStore.addItem(data)
-    if (result.success) {
-      await loadReport()
-      successMsg.value = 'Despesa adicionada com sucesso!'
-      showItemForm.value = false
-      resetItemForm()
     } else {
-      errorMsg.value = result.error || 'Erro ao adicionar despesa.'
+      const result = await expensesStore.addItem(data)
+      if (result.success) {
+        await loadReport()
+        successMsg.value = 'Despesa adicionada com sucesso!'
+        showItemForm.value = false
+        resetItemForm()
+      } else {
+        errorMsg.value = result.error || 'Erro ao adicionar despesa.'
+      }
     }
+  } catch (err: any) {
+    errorMsg.value = err?.message || 'Erro ao adicionar despesa.'
+  } finally {
+    submitting.value = false
   }
 }
 
@@ -482,12 +677,17 @@ async function handleRemoveItem(itemId: string) {
   if (!report.value) return
   successMsg.value = ''
   errorMsg.value = ''
-  const result = await expensesStore.removeItem(itemId, report.value.id)
-  if (result.success) {
-    successMsg.value = 'Item removido com sucesso!'
-    await loadReport()
-  } else {
-    errorMsg.value = result.error || 'Erro ao remover item.'
+  submitting.value = true
+  try {
+    const result = await expensesStore.removeItem(itemId, report.value.id)
+    if (result.success) {
+      successMsg.value = 'Item removido com sucesso!'
+      await loadReport()
+    } else {
+      errorMsg.value = result.error || 'Erro ao remover item.'
+    }
+  } finally {
+    submitting.value = false
   }
 }
 
@@ -495,12 +695,19 @@ async function handleSubmitReport() {
   if (!report.value) return
   successMsg.value = ''
   errorMsg.value = ''
-  const result = await expensesStore.submitReport(report.value.id)
-  if (result.success) {
-    successMsg.value = 'Relatório enviado para aprovação!'
-    await loadReport()
-  } else {
-    errorMsg.value = result.error || 'Erro ao enviar relatório.'
+  submitting.value = true
+  try {
+    const result = await expensesStore.submitReport(report.value.id, submitTargetUserId.value || undefined)
+    if (result.success) {
+      successMsg.value = 'Relatório enviado para aprovação!'
+      showSubmitModal.value = false
+      submitTargetUserId.value = ''
+      await loadReport()
+    } else {
+      errorMsg.value = result.error || 'Erro ao enviar relatório.'
+    }
+  } finally {
+    submitting.value = false
   }
 }
 
@@ -508,12 +715,17 @@ async function handleApproveReport() {
   if (!report.value) return
   successMsg.value = ''
   errorMsg.value = ''
-  const result = await expensesStore.approveReport(report.value.id)
-  if (result.success) {
-    successMsg.value = 'Relatório aprovado com sucesso!'
-    await loadReport()
-  } else {
-    errorMsg.value = result.error || 'Erro ao aprovar relatório.'
+  submitting.value = true
+  try {
+    const result = await expensesStore.approveReport(report.value.id)
+    if (result.success) {
+      successMsg.value = 'Relatório aprovado com sucesso!'
+      await loadReport()
+    } else {
+      errorMsg.value = result.error || 'Erro ao aprovar relatório.'
+    }
+  } finally {
+    submitting.value = false
   }
 }
 
@@ -521,14 +733,57 @@ async function handleRejectReport() {
   if (!report.value) return
   successMsg.value = ''
   errorMsg.value = ''
-  const result = await expensesStore.rejectReport(report.value.id, rejectionReason.value)
-  if (result.success) {
-    successMsg.value = 'Relatório rejeitado.'
-    showRejectModal.value = false
-    rejectionReason.value = ''
-    await loadReport()
-  } else {
-    errorMsg.value = result.error || 'Erro ao rejeitar relatório.'
+  submitting.value = true
+  try {
+    const result = await expensesStore.rejectReport(report.value.id, rejectionReason.value)
+    if (result.success) {
+      successMsg.value = 'Relatório rejeitado.'
+      showRejectModal.value = false
+      rejectionReason.value = ''
+      await loadReport()
+    } else {
+      errorMsg.value = result.error || 'Erro ao rejeitar relatório.'
+    }
+  } finally {
+    submitting.value = false
+  }
+}
+
+async function handleReturnForRevision() {
+  if (!report.value) return
+  successMsg.value = ''
+  errorMsg.value = ''
+  submitting.value = true
+  try {
+    const result = await expensesStore.returnForRevision(report.value.id, returnReason.value)
+    if (result.success) {
+      successMsg.value = 'Relatório devolvido para revisão.'
+      showReturnModal.value = false
+      returnReason.value = ''
+      await loadReport()
+    } else {
+      errorMsg.value = result.error || 'Erro ao devolver relatório.'
+    }
+  } finally {
+    submitting.value = false
+  }
+}
+
+async function handleReopenReport() {
+  if (!report.value) return
+  successMsg.value = ''
+  errorMsg.value = ''
+  submitting.value = true
+  try {
+    const result = await expensesStore.returnForRevision(report.value.id, report.value.rejection_reason || '')
+    if (result.success) {
+      successMsg.value = 'Relatório reaberto como rascunho. Você já pode editá-lo.'
+      await loadReport()
+    } else {
+      errorMsg.value = result.error || 'Erro ao reabrir relatório.'
+    }
+  } finally {
+    submitting.value = false
   }
 }
 
@@ -537,11 +792,85 @@ async function handleDeleteReport() {
   if (!confirm('Tem certeza que deseja excluir este relatório?')) return
   successMsg.value = ''
   errorMsg.value = ''
-  const result = await expensesStore.deleteReport(report.value.id)
-  if (result.success) {
-    router.push('/reports')
-  } else {
-    errorMsg.value = result.error || 'Erro ao excluir relatório.'
+  submitting.value = true
+  try {
+    const result = await expensesStore.deleteReport(report.value.id)
+    if (result.success) {
+      router.push('/reports')
+    } else {
+      errorMsg.value = result.error || 'Erro ao excluir relatório.'
+    }
+  } finally {
+    submitting.value = false
+  }
+}
+
+async function handlePayReport() {
+  if (!report.value) return
+  successMsg.value = ''
+  errorMsg.value = ''
+  submitting.value = true
+  try {
+    const result = await expensesStore.payReport(report.value.id)
+    if (result.success) {
+      successMsg.value = 'Relatório marcado como pago!'
+      await loadReport()
+    } else {
+      errorMsg.value = result.error || 'Erro ao pagar relatório.'
+    }
+  } finally {
+    submitting.value = false
+  }
+}
+
+async function handleToggleItemPaid(item: RecordModel) {
+  if (!report.value) return
+  successMsg.value = ''
+  errorMsg.value = ''
+  submitting.value = true
+  try {
+    const result = await expensesStore.markItemPaid(item.id, report.value.id, !item.paid)
+    if (result.success) {
+      await loadReport()
+    } else {
+      errorMsg.value = result.error || 'Erro ao atualizar pagamento do item.'
+    }
+  } finally {
+    submitting.value = false
+  }
+}
+
+async function handleForwardReport() {
+  if (!report.value || !forwardTargetUserId.value) return
+  successMsg.value = ''
+  errorMsg.value = ''
+  submitting.value = true
+  try {
+    const result = await expensesStore.forwardReport(report.value.id, forwardTargetUserId.value, forwardNotes.value)
+    if (result.success) {
+      successMsg.value = 'Relatório encaminhado com sucesso!'
+      showForwardModal.value = false
+      forwardTargetUserId.value = ''
+      forwardNotes.value = ''
+    } else {
+      errorMsg.value = result.error || 'Erro ao encaminhar relatório.'
+    }
+  } finally {
+    submitting.value = false
+  }
+}
+
+async function fetchApproverMembers() {
+  const companyId = companyStore.currentCompany?.id
+  if (!companyId) return
+  try {
+    const records = await pb.collection('company_users').getFullList({
+      filter: `company="${companyId}" && (role="approver" || role="admin") && active=true`,
+      expand: 'user',
+    })
+    approverMembers.value = records.filter(m => m.expand?.user?.id !== pb.authStore.record?.id)
+  } catch {
+    approverMembers.value = []
   }
 }
 
@@ -558,6 +887,6 @@ async function loadReport() {
 
 onMounted(async () => {
   await companyStore.fetchMyCompanies()
-  await Promise.all([loadReport(), fetchCategories()])
+  await Promise.all([loadReport(), fetchCategories(), fetchApproverMembers()])
 })
 </script>

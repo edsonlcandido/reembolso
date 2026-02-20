@@ -88,6 +88,7 @@ import {
   BuildingOfficeIcon,
   UsersIcon,
   TagIcon,
+  ClipboardDocumentCheckIcon,
 } from '@heroicons/vue/24/outline'
 import { Bars3Icon, UserCircleIcon, ArrowRightOnRectangleIcon } from '@heroicons/vue/24/outline'
 
@@ -103,20 +104,26 @@ const userName = computed(() => {
 })
 
 const isAdmin = computed(() => companyStore.currentUserRole === 'admin')
+const isApprover = computed(() => companyStore.currentUserRole === 'admin' || companyStore.currentUserRole === 'approver')
 const hasNoCompany = computed(() => companyStore.companies.length === 0)
 
 const allNavItems = [
-  { path: '/dashboard', label: 'Dashboard', icon: HomeIcon, adminOnly: false, showForNewUser: false },
-  { path: '/reports', label: 'Relatórios', icon: DocumentTextIcon, adminOnly: false, showForNewUser: false },
-  { path: '/expenses/new', label: 'Nova Despesa', icon: PlusCircleIcon, adminOnly: false, showForNewUser: false },
-  { path: '/companies', label: 'Empresa', icon: BuildingOfficeIcon, adminOnly: true, showForNewUser: true },
-  { path: '/companies/members', label: 'Membros', icon: UsersIcon, adminOnly: true, showForNewUser: false },
-  { path: '/categories', label: 'Categorias', icon: TagIcon, adminOnly: true, showForNewUser: false },
+  { path: '/dashboard', label: 'Dashboard', icon: HomeIcon, adminOnly: false, approverOnly: false, showForNewUser: false },
+  { path: '/approvals', label: 'Aprovações Pendentes', icon: ClipboardDocumentCheckIcon, adminOnly: false, approverOnly: true, showForNewUser: false },
+  { path: '/reports', label: 'Relatórios', icon: DocumentTextIcon, adminOnly: false, approverOnly: false, showForNewUser: false },
+  { path: '/expenses/new', label: 'Nova Despesa', icon: PlusCircleIcon, adminOnly: false, approverOnly: false, showForNewUser: false },
+  { path: '/companies', label: 'Empresa', icon: BuildingOfficeIcon, adminOnly: true, approverOnly: false, showForNewUser: true },
+  { path: '/companies/members', label: 'Membros', icon: UsersIcon, adminOnly: true, approverOnly: false, showForNewUser: false },
+  { path: '/categories', label: 'Categorias', icon: TagIcon, adminOnly: true, approverOnly: false, showForNewUser: false },
 ]
 
 const navItems = computed(() =>
-  // Show item if: not admin-only, OR user is admin, OR item is shown for new users without a company
-  allNavItems.filter(item => !item.adminOnly || isAdmin.value || (item.showForNewUser && hasNoCompany.value))
+  allNavItems.filter(item => {
+    if (item.showForNewUser && hasNoCompany.value) return true
+    if (item.adminOnly) return isAdmin.value
+    if (item.approverOnly) return isApprover.value
+    return true
+  })
 )
 
 function isActive(path: string): boolean {

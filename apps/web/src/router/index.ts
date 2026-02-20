@@ -12,8 +12,10 @@ import CompanyMembersView from '../views/CompanyMembersView.vue'
 import ExpenseReportsView from '../views/ExpenseReportsView.vue'
 import ExpenseReportDetailView from '../views/ExpenseReportDetailView.vue'
 import CreateExpenseReportView from '../views/CreateExpenseReportView.vue'
+import EditExpenseReportView from '../views/EditExpenseReportView.vue'
 import CategoriesView from '../views/CategoriesView.vue'
 import AddExpenseView from '../views/AddExpenseView.vue'
+import ApprovalsView from '../views/ApprovalsView.vue'
 
 const router = createRouter({
   history: createWebHistory('/app/'),
@@ -29,7 +31,7 @@ const router = createRouter({
       meta: { requiresGuest: true },
     },
     {
-      path: '/company/:slug',
+      path: '/companies/:slug',
       name: 'company-auth',
       component: CompanyAuthView,
       meta: { requiresGuest: true },
@@ -73,6 +75,11 @@ const router = createRouter({
           component: ExpenseReportsView,
         },
         {
+          path: 'approvals',
+          name: 'approvals',
+          component: ApprovalsView,
+        },
+        {
           path: 'reports/new',
           name: 'create-expense-report',
           component: CreateExpenseReportView,
@@ -81,6 +88,11 @@ const router = createRouter({
           path: 'reports/:id',
           name: 'expense-report-detail',
           component: ExpenseReportDetailView,
+        },
+        {
+          path: 'reports/:id/edit',
+          name: 'edit-expense-report',
+          component: EditExpenseReportView,
         },
         {
           path: 'expenses/new',
