@@ -10,18 +10,23 @@ export const useExpensesStore = defineStore('expenses', () => {
   const items = ref<RecordModel[]>([])
   const loading = ref(false)
 
-  function isAdminOrApprover(): boolean {
-    const companyStore = useCompanyStore()
-    return companyStore.currentUserRole === 'admin' || companyStore.currentUserRole === 'approver'
-  }
-
   async function fetchReports(companyId: string, filters?: { status?: string }) {
     loading.value = true
     try {
+      const companyStore = useCompanyStore()
+      const userId = pb.authStore.record?.id
       let filter = `company="${companyId}"`
-      if (!isAdminOrApprover()) {
-        filter += ` && user="${pb.authStore.record?.id}"`
+
+      if (companyStore.currentUserRole === 'admin') {
+        // Admins see all reports in the company
+      } else if (companyStore.currentUserRole === 'approver') {
+        // Approvers see their own reports + reports submitted to them
+        filter += ` && (user="${userId}" || submitted_to="${userId}")`
+      } else {
+        // Employees see only their own reports
+        filter += ` && user="${userId}"`
       }
+
       if (filters?.status) {
         filter += ` && status="${filters.status}"`
       }
@@ -45,13 +50,43 @@ export const useExpensesStore = defineStore('expenses', () => {
       const record = await pb.collection('expense_reports').getOne(id, {
         expand: 'user',
       })
-      if (!isAdminOrApprover() && record.user !== pb.authStore.record?.id) {
+      const userId = pb.authStore.record?.id
+      const companyStore = useCompanyStore()
+      // Allow: admins, approvers (own or submitted_to them), employees (own reports)
+      if (companyStore.currentUserRole === 'admin') {
+        // ok
+      } else if (companyStore.currentUserRole === 'approver') {
+        if (record.user !== userId && record.submitted_to !== userId) {
+          return { success: false, error: 'Você não tem permissão para acessar este relatório.' }
+        }
+      } else if (record.user !== userId) {
         return { success: false, error: 'Você não tem permissão para acessar este relatório.' }
       }
       currentReport.value = record
       return { success: true, data: record }
     } catch (error: any) {
       return { success: false, error: error?.message || 'Erro ao buscar relatório.' }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function fetchPendingApprovals(companyId: string) {
+    loading.value = true
+    try {
+      const companyStore = useCompanyStore()
+      if (companyStore.currentUserRole !== 'admin' && companyStore.currentUserRole !== 'approver') {
+        return { success: false, error: 'Sem permissão para acessar aprovações.' }
+      }
+      const userId = pb.authStore.record?.id
+      const records = await pb.collection('expense_reports').getFullList({
+        filter: `company="${companyId}" && status="submitted" && submitted_to="${userId}"`,
+        sort: '-submitted_at',
+        expand: 'user',
+      })
+      return { success: true, data: records }
+    } catch (error: any) {
+      return { success: false, error: error?.message || 'Erro ao buscar aprovações pendentes.' }
     } finally {
       loading.value = false
     }
@@ -353,6 +388,7 @@ export const useExpensesStore = defineStore('expenses', () => {
     items,
     loading,
     fetchReports,
+    fetchPendingApprovals,
     getReport,
     createReport,
     updateReport,

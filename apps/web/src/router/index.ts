@@ -14,6 +14,7 @@ import ExpenseReportDetailView from '../views/ExpenseReportDetailView.vue'
 import CreateExpenseReportView from '../views/CreateExpenseReportView.vue'
 import CategoriesView from '../views/CategoriesView.vue'
 import AddExpenseView from '../views/AddExpenseView.vue'
+import ApprovalsView from '../views/ApprovalsView.vue'
 
 const router = createRouter({
   history: createWebHistory('/app/'),
@@ -71,6 +72,11 @@ const router = createRouter({
           path: 'reports',
           name: 'expense-reports',
           component: ExpenseReportsView,
+        },
+        {
+          path: 'approvals',
+          name: 'approvals',
+          component: ApprovalsView,
         },
         {
           path: 'reports/new',
