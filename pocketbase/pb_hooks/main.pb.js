@@ -104,6 +104,31 @@ routerAdd("POST", "/api/companies/create", (e) => {
 }, $apis.requireAuth())
 
 /**
+ * Endpoint: Find user by email (server-side lookup)
+ *
+ * Searches for a user by email address server-side, bypassing PocketBase's
+ * email field restrictions on the users auth collection that prevent
+ * client-side filtering by email.
+ *
+ * Returns the user's id, name and email on success, or 404 if not found.
+ */
+routerAdd("POST", "/api/users/find-by-email", (e) => {
+  const body = e.requestInfo().body
+  const email = body.email
+
+  if (!email) {
+    return e.json(400, { error: "Email é obrigatório" })
+  }
+
+  try {
+    const user = $app.findFirstRecordByData("users", "email", email)
+    return e.json(200, { id: user.id, name: user.getString("name"), email: user.getString("email") })
+  } catch (err) {
+    return e.json(404, { error: "Usuário não encontrado com este e-mail." })
+  }
+}, $apis.requireAuth())
+
+/**
  * Endpoint: Leitura de comprovante via IA (OpenRouter)
  *
  * Recebe uma imagem em base64, envia para a API do OpenRouter com um modelo
