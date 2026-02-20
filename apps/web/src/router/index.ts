@@ -12,6 +12,7 @@ import CompanyMembersView from '../views/CompanyMembersView.vue'
 import ExpenseReportsView from '../views/ExpenseReportsView.vue'
 import ExpenseReportDetailView from '../views/ExpenseReportDetailView.vue'
 import CreateExpenseReportView from '../views/CreateExpenseReportView.vue'
+import EditExpenseReportView from '../views/EditExpenseReportView.vue'
 import CategoriesView from '../views/CategoriesView.vue'
 import AddExpenseView from '../views/AddExpenseView.vue'
 import ApprovalsView from '../views/ApprovalsView.vue'
@@ -87,6 +88,11 @@ const router = createRouter({
           path: 'reports/:id',
           name: 'expense-report-detail',
           component: ExpenseReportDetailView,
+        },
+        {
+          path: 'reports/:id/edit',
+          name: 'edit-expense-report',
+          component: EditExpenseReportView,
         },
         {
           path: 'expenses/new',
