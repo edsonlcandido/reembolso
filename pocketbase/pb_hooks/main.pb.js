@@ -21,6 +21,23 @@ routerAdd("GET", "/app/{path...}", $apis.static("pb_public/app", true))
 onRecordAfterCreateSuccess((e) => {
   const companyId = e.record.id
 
+  // Link the authenticated creator as admin of the new company.
+  // This runs server-side and bypasses the company_users createRule.
+  const authRecord = e.requestInfo().auth
+  if (authRecord) {
+    try {
+      const companyUsersCol = $app.findCollectionByNameOrId("company_users")
+      const membership = new Record(companyUsersCol)
+      membership.set("company", companyId)
+      membership.set("user", authRecord.id)
+      membership.set("role", "admin")
+      membership.set("active", true)
+      $app.save(membership)
+    } catch (err) {
+      console.error("Erro ao criar vínculo admin com empresa:", err)
+    }
+  }
+
   const defaultCategories = [
     { name: "Alimentação", icon: "🍔", color: "#ef4444" },
     { name: "Transporte", icon: "🚗", color: "#3b82f6" },

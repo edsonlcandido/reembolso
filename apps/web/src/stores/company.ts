@@ -54,16 +54,13 @@ export const useCompanyStore = defineStore('company', () => {
   async function createCompany(data: { name: string; slug: string; cnpj?: string; email?: string; phone?: string; address?: string }) {
     loading.value = true
     try {
-      const company = await pb.collection('companies').create({
+      await pb.collection('companies').create({
         ...data,
         active: true,
       })
-      await pb.collection('company_users').create({
-        company: company.id,
-        user: pb.authStore.record?.id,
-        role: 'admin',
-        active: true,
-      })
+      // The company_users admin membership is created server-side by the
+      // onRecordAfterCreateSuccess hook in pb_hooks/main.pb.js, which bypasses
+      // the createRule that requires an existing admin membership.
       await fetchMyCompanies()
       return { success: true }
     } catch (error: any) {
