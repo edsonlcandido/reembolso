@@ -109,8 +109,8 @@ const allNavItems = [
   { path: '/dashboard', label: 'Dashboard', icon: HomeIcon, adminOnly: false, showForNewUser: false },
   { path: '/reports', label: 'Relatórios', icon: DocumentTextIcon, adminOnly: false, showForNewUser: false },
   { path: '/expenses/new', label: 'Nova Despesa', icon: PlusCircleIcon, adminOnly: false, showForNewUser: false },
-  { path: '/company', label: 'Empresa', icon: BuildingOfficeIcon, adminOnly: true, showForNewUser: true },
-  { path: '/company/members', label: 'Membros', icon: UsersIcon, adminOnly: true, showForNewUser: false },
+  { path: '/companies', label: 'Empresa', icon: BuildingOfficeIcon, adminOnly: true, showForNewUser: true },
+  { path: '/companies/members', label: 'Membros', icon: UsersIcon, adminOnly: true, showForNewUser: false },
   { path: '/categories', label: 'Categorias', icon: TagIcon, adminOnly: true, showForNewUser: false },
 ]
 

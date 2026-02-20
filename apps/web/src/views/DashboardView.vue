@@ -33,7 +33,7 @@
             <h3 class="font-semibold text-yellow-800 text-lg">Empresa não configurada</h3>
             <p class="text-yellow-700 mt-1">Você precisa criar ou ser adicionado a uma empresa para começar a gerenciar despesas.</p>
             <router-link
-              to="/company"
+              to="/companies"
               class="mt-3 inline-flex items-center px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors font-medium text-sm"
             >
               <BuildingOfficeIcon class="h-4 w-4 mr-2" />
@@ -180,7 +180,7 @@
             </router-link>
 
             <router-link
-              to="/company/members"
+              to="/companies/members"
               v-if="isAdmin"
               class="flex items-center gap-3 p-3 rounded-xl hover:bg-green-50 transition-colors group"
             >

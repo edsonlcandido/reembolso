@@ -39,7 +39,7 @@
             @input="validateSlug"
           />
           <p class="mt-1 text-sm text-gray-500">
-            URL de acesso: /app/company/{{ form.slug || 'slug-da-empresa' }}
+            URL de acesso: /app/companies/{{ form.slug || 'slug-da-empresa' }}
           </p>
           <p v-if="slugError" class="mt-1 text-sm text-red-500">{{ slugError }}</p>
         </div>

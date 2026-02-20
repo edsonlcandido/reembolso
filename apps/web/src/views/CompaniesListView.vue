@@ -27,7 +27,7 @@
         >
           <div class="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4">
             <h2 class="text-xl font-bold text-white truncate">{{ company.name }}</h2>
-            <p class="text-blue-100 text-sm mt-1">/app/company/{{ company.slug }}</p>
+            <p class="text-blue-100 text-sm mt-1">/app/companies/{{ company.slug }}</p>
           </div>
           
           <div class="p-6 space-y-3">
@@ -54,7 +54,7 @@
             
             <div class="pt-4 flex gap-2">
               <router-link
-                :to="`/company/edit/${company.id}`"
+                :to="`/companies/${company.id}/edit`"
                 class="flex-1 rounded-lg bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-100 transition-all text-center"
               >
                 Editar
