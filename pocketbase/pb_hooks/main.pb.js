@@ -104,6 +104,74 @@ routerAdd("POST", "/api/companies/create", (e) => {
 }, $apis.requireAuth())
 
 /**
+ * Endpoint: Find user by email (server-side lookup)
+ *
+ * Searches for a user by email address server-side, bypassing PocketBase's
+ * email field restrictions on the users auth collection that prevent
+ * client-side filtering by email.
+ *
+ * Returns the user's id, name and email on success, or 404 if not found.
+ */
+routerAdd("POST", "/api/users/find-by-email", (e) => {
+  const body = e.requestInfo().body
+  const email = body.email
+
+  if (!email) {
+    return e.json(400, { error: "Email é obrigatório" })
+  }
+
+  try {
+    const user = $app.findFirstRecordByData("users", "email", email)
+    return e.json(200, { id: user.id, name: user.getString("name"), email: user.getString("email") })
+  } catch (err) {
+    return e.json(404, { error: "Usuário não encontrado com este e-mail." })
+  }
+}, $apis.requireAuth())
+
+/**
+ * Endpoint: Remove a company member (server-side operation)
+ *
+ * Verifies that the requesting user is an admin of the company before
+ * deleting the membership record. This bypasses the self-referential
+ * deleteRule on the company_users collection that can fail in practice.
+ */
+routerAdd("DELETE", "/api/companies/members/{membershipId}", (e) => {
+  const membershipId = e.pathValue("membershipId")
+
+  let membership
+  try {
+    membership = $app.findRecordById("company_users", membershipId)
+  } catch (err) {
+    return e.json(404, { error: "Membro não encontrado." })
+  }
+
+  const companyId = membership.getString("company")
+
+  // Verify the requesting user is an admin of this company
+  try {
+    const adminMemberships = $app.findRecordsByFilter(
+      "company_users",
+      `company = "${companyId}" && user = "${e.auth.id}" && role = "admin"`,
+      "",
+      1,
+      0,
+    )
+    if (!adminMemberships || adminMemberships.length === 0) {
+      return e.json(403, { error: "Apenas administradores podem remover membros." })
+    }
+  } catch (err) {
+    return e.json(500, { error: "Erro ao verificar permissões." })
+  }
+
+  try {
+    $app.delete(membership)
+    return e.json(200, { success: true })
+  } catch (err) {
+    return e.json(500, { error: "Erro ao remover membro." })
+  }
+}, $apis.requireAuth())
+
+/**
  * Endpoint: Leitura de comprovante via IA (OpenRouter)
  *
  * Recebe uma imagem em base64, envia para a API do OpenRouter com um modelo

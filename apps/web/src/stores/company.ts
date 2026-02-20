@@ -106,22 +106,27 @@ export const useCompanyStore = defineStore('company', () => {
     if (!currentCompany.value) return { success: false, error: 'Nenhuma empresa selecionada.' }
     loading.value = true
     try {
-      const users = await pb.collection('users').getList(1, 1, {
-        filter: `email="${email}"`,
+      const userResult = await pb.send('/api/users/find-by-email', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+        headers: { 'Content-Type': 'application/json' },
       })
-      if (users.items.length === 0) {
+      if (!userResult || !userResult.id) {
         return { success: false, error: 'Usuário não encontrado com este e-mail.' }
       }
-      const user = users.items[0]
       await pb.collection('company_users').create({
         company: currentCompany.value.id,
-        user: user.id,
+        user: userResult.id,
         role,
         active: true,
       })
       return { success: true }
     } catch (error: any) {
-      return { success: false, error: error?.message || 'Erro ao adicionar membro.' }
+      const serverMessage = error?.response?.message || error?.data?.message || error?.data?.error
+      if (error?.status === 404 || serverMessage?.includes('não encontrado')) {
+        return { success: false, error: 'Usuário não encontrado com este e-mail.' }
+      }
+      return { success: false, error: serverMessage || error?.message || 'Erro ao adicionar membro.' }
     } finally {
       loading.value = false
     }
@@ -142,7 +147,9 @@ export const useCompanyStore = defineStore('company', () => {
   async function removeMember(membershipId: string) {
     loading.value = true
     try {
-      await pb.collection('company_users').delete(membershipId)
+      await pb.send(`/api/companies/members/${membershipId}`, {
+        method: 'DELETE',
+      })
       return { success: true }
     } catch (error: any) {
       return { success: false, error: error?.message || 'Erro ao remover membro.' }
