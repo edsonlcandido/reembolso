@@ -238,16 +238,16 @@ async function handleRegister() {
       emailVisibility: true,
     })
 
-    // Link user to company as employee
+    // Auto-login after registration (BEFORE creating company_users)
+    await pb.collection('users').authWithPassword(registerForm.value.email, registerForm.value.password)
+
+    // Link user to company as employee (AFTER authentication)
     await pb.collection('company_users').create({
       company: companyId.value,
       user: user.id,
       role: 'employee',
       active: true,
     })
-
-    // Auto-login after registration
-    await pb.collection('users').authWithPassword(registerForm.value.email, registerForm.value.password)
 
     successMsg.value = 'Conta criada com sucesso! Redirecionando...'
     await nextTick()

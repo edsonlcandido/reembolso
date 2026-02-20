@@ -30,7 +30,7 @@ const router = createRouter({
       meta: { requiresGuest: true },
     },
     {
-      path: '/company/:slug',
+      path: '/companies/:slug',
       name: 'company-auth',
       component: CompanyAuthView,
       meta: { requiresGuest: true },
