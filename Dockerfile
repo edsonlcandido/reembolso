@@ -58,6 +58,7 @@ RUN mkdir -p pb_hooks pb_migrations pb_data pb_public/app
 
 # Copiar hooks e configurações
 COPY pocketbase/pb_hooks ./pb_hooks
+COPY pocketbase/pb_migrations ./pb_migrations
 
 # Copiar builds das aplicações
 COPY --from=landing-builder /app/apps/landing/dist ./pb_public
