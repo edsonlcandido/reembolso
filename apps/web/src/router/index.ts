@@ -123,7 +123,9 @@ router.beforeEach(async (to, _from, next) => {
     if (companyStore.companies.length === 0) {
       await companyStore.fetchMyCompanies()
     }
-    if (companyStore.currentUserRole !== 'admin') {
+    // Allow users with no companies to create their first company.
+    // Block only when user has companies but is not admin.
+    if (companyStore.companies.length > 0 && companyStore.currentUserRole !== 'admin') {
       next('/dashboard')
       return
     }
