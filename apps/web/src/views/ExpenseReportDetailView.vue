@@ -277,6 +277,15 @@
                   </template>
                   <button
                     v-if="report.status === 'draft'"
+                    @click="openEditItemModal(item)"
+                    :disabled="submitting || expensesStore.loading"
+                    class="rounded-lg border border-blue-300 p-2 text-blue-600 hover:bg-blue-50 transition-all disabled:opacity-50"
+                    title="Editar despesa"
+                  >
+                    <PencilIcon class="h-4 w-4" />
+                  </button>
+                  <button
+                    v-if="report.status === 'draft'"
                     @click="handleRemoveItem(item.id)"
                     :disabled="submitting || expensesStore.loading"
                     class="rounded-lg border border-red-300 p-2 text-red-600 hover:bg-red-50 transition-all disabled:opacity-50"
@@ -445,6 +454,68 @@
         </div>
       </div>
     </div>
+
+    <div
+      v-if="showEditItemModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      @click.self="closeEditItemModal()"
+    >
+      <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full mx-4">
+        <h3 class="text-lg font-bold text-gray-900 mb-4">Editar Despesa</h3>
+        <form @submit.prevent="handleUpdateItem" class="space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Data</label>
+              <input v-model="editItemForm.date" type="date" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+              <select v-model="editItemForm.category" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                <option value="">Selecionar</option>
+                <template v-if="categories.length > 0">
+                  <option v-for="cat in categories" :key="cat.id" :value="cat.id">
+                    {{ cat.icon }} {{ cat.name }}
+                  </option>
+                </template>
+                <option v-else disabled value="">Nenhuma categoria cadastrada</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
+              <input v-model="editItemForm.amountDisplay" type="number" step="0.01" min="0" required class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" placeholder="0,00" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Estabelecimento</label>
+              <input v-model="editItemForm.merchant" type="text" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" placeholder="Nome do estabelecimento" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+            <input v-model="editItemForm.description" type="text" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" placeholder="Descrição da despesa" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Observações</label>
+            <textarea v-model="editItemForm.notes" rows="2" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" placeholder="Observações adicionais" />
+          </div>
+          <div class="flex gap-3 justify-end">
+            <button
+              type="button"
+              @click="closeEditItemModal()"
+              class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              :disabled="submitting || expensesStore.loading"
+              class="rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-2 text-sm font-semibold text-white shadow hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50"
+            >
+              Salvar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -454,7 +525,7 @@ import { useCompanyStore } from '../stores/company'
 import { useRoute, useRouter } from 'vue-router'
 import { ref, computed, onMounted } from 'vue'
 import pb from '../services/pocketbase'
-import { PlusIcon, TrashIcon, ClipboardDocumentListIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon, TrashIcon, ClipboardDocumentListIcon, PencilIcon } from '@heroicons/vue/24/outline'
 import type { RecordModel } from 'pocketbase'
 
 const route = useRoute()
@@ -479,6 +550,16 @@ const fileInputRef = ref<HTMLInputElement | null>(null)
 const analyzingReceipt = ref(false)
 const submitting = ref(false)
 const categories = ref<RecordModel[]>([])
+const showEditItemModal = ref(false)
+const editingItem = ref<RecordModel | null>(null)
+const editItemForm = ref({
+  date: '',
+  category: '',
+  amountDisplay: '',
+  merchant: '',
+  description: '',
+  notes: '',
+})
 
 const itemForm = ref({
   date: '',
@@ -686,6 +767,59 @@ async function handleRemoveItem(itemId: string) {
     } else {
       errorMsg.value = result.error || 'Erro ao remover item.'
     }
+  } finally {
+    submitting.value = false
+  }
+}
+
+function openEditItemModal(item: RecordModel) {
+  editingItem.value = item
+  editItemForm.value = {
+    date: item.date ? item.date.substring(0, 10) : '',
+    category: item.category || '',
+    amountDisplay: item.amount ? String(item.amount / 100) : '',
+    merchant: item.merchant || '',
+    description: item.description || '',
+    notes: item.notes || '',
+  }
+  showEditItemModal.value = true
+}
+
+function closeEditItemModal() {
+  showEditItemModal.value = false
+  editingItem.value = null
+}
+
+async function handleUpdateItem() {
+  if (!report.value || !editingItem.value) return
+  successMsg.value = ''
+  errorMsg.value = ''
+
+  const amountCents = Math.round(parseFloat(editItemForm.value.amountDisplay || '0') * 100)
+  if (amountCents <= 0) {
+    errorMsg.value = 'O valor deve ser maior que zero.'
+    return
+  }
+
+  submitting.value = true
+  try {
+    const result = await expensesStore.updateItem(editingItem.value.id, {
+      amount: amountCents,
+      date: editItemForm.value.date || undefined,
+      category: editItemForm.value.category || undefined,
+      merchant: editItemForm.value.merchant || undefined,
+      description: editItemForm.value.description || undefined,
+      notes: editItemForm.value.notes || undefined,
+    })
+    if (result.success) {
+      successMsg.value = 'Despesa atualizada com sucesso!'
+      closeEditItemModal()
+      await loadReport()
+    } else {
+      errorMsg.value = result.error || 'Erro ao atualizar despesa.'
+    }
+  } catch (err: any) {
+    errorMsg.value = err?.message || 'Erro ao atualizar despesa.'
   } finally {
     submitting.value = false
   }
