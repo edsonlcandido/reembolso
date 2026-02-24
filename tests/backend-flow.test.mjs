@@ -7,18 +7,22 @@
  *  2.  Create company (admin becomes company admin)
  *  3.  Create employee and link to company
  *  4.  Create expense report (as employee)
+ *  4.1 Fetch company categories
+ *  5.1 Test: Employee CANNOT forward approval
+ *  5.2 Test: Invalid category validation
  *  5.  Add expense item to report
  *  6.  Create second employee (future approver)
- *  7.  Admin promotes second employee to approver
- *  8.  Employee submits report to approver
- *  9.  Approver returns report for revision
- *  10. Employee adds a new expense item
- *  11. Employee edits an existing expense item amount
- *  12. Employee resubmits report to approver
- *  13. Create financial user and link to company
- *  14. Admin promotes financial user to approver
- *  15. Approver approves report and forwards to financial
- *  16. Financial marks report as paid
+ *  6.1 Admin promotes second employee to approver
+ *  6.2 Test: Approver CAN forward approval
+ *  7.  Employee submits report to approver
+ *  8.  Approver returns report for revision
+ *  9.  Employee adds a new expense item
+ *  10. Employee edits an existing expense item amount
+ *  11. Employee resubmits report to approver
+ *  12. Create financial user and link to company
+ *  13. Admin promotes financial user to approver
+ *  14. Approver approves report and forwards to financial
+ *  15. Financial marks report as paid
  *
  * Usage:
  *   POCKETBASE_URL=http://localhost:8090 node tests/backend-flow.test.mjs
@@ -78,7 +82,7 @@ function uid() {
 async function register(name, email, password) {
   return api("/api/collections/users/records", {
     method: "POST",
-    body: { name, email, password, passwordConfirm: password },
+    body: { name, email, password, passwordConfirm: password, emailVisibility: true },
   })
 }
 
@@ -90,6 +94,16 @@ async function login(email, password) {
   })
   if (status !== 200) throw new Error(`Login failed for ${email}: ${JSON.stringify(data)}`)
   return { token: data.token, id: data.record.id }
+}
+
+/** Fetch categories for a company */
+async function getCompanyCategories(companyId, token) {
+  const { status, data } = await api(
+    `/api/collections/categories/records?filter=company="${companyId}"&sort=name`,
+    { headers: bearer(token) }
+  )
+  if (status !== 200) throw new Error(`Failed to fetch categories: ${JSON.stringify(data)}`)
+  return data.items || []
 }
 
 // ─── Main test runner ────────────────────────────────────────────────────────
@@ -155,14 +169,28 @@ async function run() {
   const reportId = r4.data.id
   ok(`Expense report created (id=${reportId})`)
 
+  // ── 4.1 Fetch company categories ──────────────────────────────────────────
+  console.log("\n4.1. Fetching company categories...")
+  const categories = await getCompanyCategories(companyId, emp.token)
+  if (categories.length === 0) fail("No categories found for company")
+  const foodCategoryId = categories.find(c => c.name === "Alimentação")?.id || categories[0].id
+  const transportCategoryId = categories.find(c => c.name === "Transporte")?.id || categories[0].id
+  ok(`Found ${categories.length} categories; using "${categories.find(c => c.id === foodCategoryId)?.name}" (id=${foodCategoryId})`)
+
   // ── 5. Add expense item ───────────────────────────────────────────────────
   console.log("\n5. Adding expense item...")
   const originalItemAmount = 50.0
-  const r5 = await api("/api/collections/expense_items/records", {
-    method: "POST",
-    headers: bearer(emp.token),
-    body: { report: reportId, amount: originalItemAmount, description: "Almoço de negócios", category: "food" },
-  })
+  const r5 = await api("/api/collections/expense_items/records",
+    {
+      method: "POST",
+      headers: bearer(emp.token),
+      body: {
+        report: reportId,
+        amount: originalItemAmount,
+        description: "Almoço de negócios",
+        category: foodCategoryId  // ✅ Use actual category ID
+      }
+    })
   if (r5.status !== 200) fail("Expense item creation", r5.data)
   const itemId = r5.data.id
   ok(`Expense item added (id=${itemId}, amount=${originalItemAmount})`)
@@ -185,32 +213,86 @@ async function run() {
   const approverMembershipId = r6b.data.id
   ok("Approver linked to company as employee")
 
-  // ── 7. Admin promotes employee to approver ────────────────────────────────
-  console.log("\n7. Admin promotes employee to approver...")
-  const r7 = await api(`/api/collections/company_users/records/${approverMembershipId}`, {
+
+  // ── 5.1 Testing permission: employee cannot forward approval ───────────
+  console.log("\n5.1. Testing permission: employee cannot forward approval...")
+  const r5_1 = await api("/api/collections/approval_actions/records", {
+    method: "POST",
+    headers: bearer(emp.token),
+    body: {
+      report: reportId,
+      company: companyId,      user: empId,      action: "forward",
+      forwarded_to: empId,
+    },
+  })
+  // ❌ Esperamos status 400 (ValidationError)
+  if (r5_1.status === 200) {
+    fail("Employee should NOT be able to forward approval", {
+      status: r5_1.status,
+      data: r5_1.data,
+    })
+  }
+  ok(`✅ Permission enforced: employee cannot forward (${r5_1.data.message || "rejected"})`)
+
+  // ── 5.2 Testing validation: invalid category ────────────────────────────
+  console.log("\n5.2. Testing validation: invalid category...")
+  const r5_2 = await api("/api/collections/expense_items/records", {
+    method: "POST",
+    headers: bearer(emp.token),
+    body: {
+      report: reportId,
+      amount: 50.0,
+      description: "Test",
+      category: "invalid_id_xyz", // ❌ categoria não existe
+    },
+  })
+  if (r5_2.status === 200) fail("Should reject invalid category", r5_2.data)
+  ok("✅ Validation enforced: category must exist")
+
+  // ── 6. Admin promotes employee to approver ────────────────────────────────
+  console.log("\n6. Admin promotes employee to approver...")
+  const r6c = await api(`/api/collections/company_users/records/${approverMembershipId}`, {
     method: "PATCH",
     headers: bearer(admin.token),
     body: { role: "approver" },
   })
-  if (r7.status !== 200) fail("Promote to approver", r7.data)
+  if (r6c.status !== 200) fail("Promote to approver", r6c.data)
   ok("Employee role updated to approver")
 
   const approver = await login(approverEmail, approverPass)
   ok("Approver logged in")
 
-  // ── 8. Employee submits report to approver ────────────────────────────────
-  console.log("\n8. Employee submits report...")
-  const r8 = await api(`/api/collections/expense_reports/records/${reportId}`, {
+  // ── 6.1 Testing permission: NOW approver CAN forward approval ─────────────
+  console.log("\n6.1. Testing permission: approver CAN forward approval...")
+  const r6_1 = await api("/api/collections/approval_actions/records", {
+    method: "POST",
+    headers: bearer(approver.token),
+    body: {
+      report: reportId,
+      company: companyId,
+      user: approverId,
+      action: "forward",
+      forwarded_to: approverId,
+    },
+  })
+  if (r6_1.status !== 200) {
+    fail("Approver should be able to forward approval", r6_1.data)
+  }
+  ok(`✅ Permission granted: approver forwarded (id=${r6_1.data.id})`)
+
+  // ── 7. Employee submits report to approver ────────────────────────────────
+  console.log("\n7. Employee submits report...")
+  const r7a = await api(`/api/collections/expense_reports/records/${reportId}`, {
     method: "PATCH",
     headers: bearer(emp.token),
     body: { status: "submitted", submitted_to: approverId },
   })
-  if (r8.status !== 200) fail("Report submission", r8.data)
+  if (r7a.status !== 200) fail("Report submission", r7a.data)
   ok("Report status → submitted")
 
-  // ── 9. Approver returns report for revision ───────────────────────────────
-  console.log("\n9. Approver returns report for revision...")
-  const r9a = await api("/api/collections/approval_actions/records", {
+  // ── 8. Approver returns report for revision ───────────────────────────────
+  console.log("\n8. Approver returns report for revision...")
+  const r8a = await api("/api/collections/approval_actions/records", {
     method: "POST",
     headers: bearer(approver.token),
     body: {
@@ -221,97 +303,99 @@ async function run() {
       notes: "Por favor, adicione mais detalhes às despesas.",
     },
   })
-  if (r9a.status !== 200) fail("Approval action (return_for_revision)", r9a.data)
+  if (r8a.status !== 200) fail("Approval action (return_for_revision)", r8a.data)
   ok("Approval action recorded (return_for_revision)")
 
-  const r9b = await api(`/api/collections/expense_reports/records/${reportId}`, {
+  const r8b = await api(`/api/collections/expense_reports/records/${reportId}`, {
     method: "PATCH",
     headers: bearer(approver.token),
     body: { status: "rejected", rejection_reason: "Por favor, adicione mais detalhes às despesas." },
   })
-  if (r9b.status !== 200) fail("Report status update to rejected", r9b.data)
+  if (r8b.status !== 200) fail("Report status update to rejected", r8b.data)
   ok("Report status → rejected (returned for revision)")
 
-  // ── 10. Employee adds a new expense item ──────────────────────────────────
-  console.log("\n10. Employee adds new expense item...")
-  const r10 = await api("/api/collections/expense_items/records", {
+  // ── 9. Employee adds a new expense item ───────────────────────────────────
+  console.log("\n9. Employee adds new expense item...")
+  const r9 = await api("/api/collections/expense_items/records", {
     method: "POST",
     headers: bearer(emp.token),
-    body: { report: reportId, amount: 30.0, description: "Táxi para reunião", category: "transport" },
+    body: {
+      report: reportId,
+      amount: 30.0,
+      description: "Táxi para reunião",
+      category: transportCategoryId
+    },
   })
-  if (r10.status !== 200) fail("New expense item creation", r10.data)
-  ok(`New expense item added (id=${r10.data.id}, amount=30.00)`)
+  if (r9.status !== 200) fail("New expense item creation", r9.data)
+  ok(`New expense item added (id=${r9.data.id}, amount=30.00)`)
 
-  // ── 11. Employee edits an existing expense item ───────────────────────────
-  console.log("\n11. Employee edits expense item amount...")
+  // ── 10. Employee edits an existing expense item ──────────────────────────
+  console.log("\n10. Employee edits expense item amount...")
   const updatedItemAmount = 75.0
-  const r11 = await api(`/api/collections/expense_items/records/${itemId}`, {
+  const r10 = await api(`/api/collections/expense_items/records/${itemId}`, {
     method: "PATCH",
     headers: bearer(emp.token),
     body: { amount: updatedItemAmount },
   })
-  if (r11.status !== 200) fail("Expense item update", r11.data)
-  ok(`Expense item updated (amount: ${originalItemAmount} → ${r11.data.amount})`)
+  if (r10.status !== 200) fail("Expense item update", r10.data)
+  ok(`Expense item updated (amount: ${originalItemAmount} → ${r10.data.amount})`)
 
-  // ── 12. Employee resubmits report ─────────────────────────────────────────
-  console.log("\n12. Employee resubmits report...")
-  const r12 = await api(`/api/collections/expense_reports/records/${reportId}`, {
+  // ── 11. Employee resubmits report ─────────────────────────────────────────
+  console.log("\n11. Employee resubmits report...")
+  const r11 = await api(`/api/collections/expense_reports/records/${reportId}`, {
     method: "PATCH",
     headers: bearer(emp.token),
     body: { status: "submitted", submitted_to: approverId },
   })
-  if (r12.status !== 200) fail("Report resubmission", r12.data)
+  if (r11.status !== 200) fail("Report resubmission", r11.data)
   ok("Report status → submitted (resubmitted)")
 
-  // ── 13. Create financial user and link to company ─────────────────────────
-  console.log("\n13. Creating financial user...")
+  // ── 12. Create financial user and link to company ─────────────────────────
+  console.log("\n12. Creating financial user...")
   const finEmail = `financial_${id}@test.com`
   const finPass = "Financial1234!"
-  const r13 = await register("Financial User", finEmail, finPass)
-  if (r13.status !== 200) fail("Financial user registration", r13.data)
-  const finId = r13.data.id
+  const r12 = await register("Financial User", finEmail, finPass)
+  if (r12.status !== 200) fail("Financial user registration", r12.data)
+  const finId = r12.data.id
   ok(`Financial user registered: ${finEmail}`)
 
-  const r13b = await api("/api/collections/company_users/records", {
+  const r12b = await api("/api/collections/company_users/records", {
     method: "POST",
     headers: bearer(admin.token),
     body: { company: companyId, user: finId, role: "employee", active: true },
   })
-  if (r13b.status !== 200) fail("Financial user linked to company", r13b.data)
-  const finMembershipId = r13b.data.id
+  if (r12b.status !== 200) fail("Financial user linked to company", r12b.data)
+  const finMembershipId = r12b.data.id
   ok("Financial user linked to company")
 
-  // ── 14. Admin promotes financial user to approver ─────────────────────────
-  console.log("\n14. Admin promotes financial user to approver...")
-  const r14 = await api(`/api/collections/company_users/records/${finMembershipId}`, {
+  // ── 13. Admin promotes financial user to approver ────────────────────────
+  console.log("\n13. Admin promotes financial user to approver...")
+  const r13 = await api(`/api/collections/company_users/records/${finMembershipId}`, {
     method: "PATCH",
     headers: bearer(admin.token),
     body: { role: "approver" },
   })
-  if (r14.status !== 200) fail("Promote financial user to approver", r14.data)
+  if (r13.status !== 200) fail("Promote financial user to approver", r13.data)
   ok("Financial user role updated to approver")
 
   const fin = await login(finEmail, finPass)
   ok("Financial user logged in")
 
-  // ── 15. Approver approves report and forwards to financial ────────────────
-  console.log("\n15. Approver approves report and forwards to financial...")
-  const r15a = await api("/api/collections/approval_actions/records", {
+  // ── 14. Approver approves report and forwards to financial ───────────────
+  console.log("\n14. Approver approves report and forwards to financial...")
+  const r14a = await api("/api/collections/approval_actions/records", {
     method: "POST",
     headers: bearer(approver.token),
     body: {
       report: reportId,
-      company: companyId,
-      user: approverId,
-      action: "forward",
+      company: companyId,      user: approverId,      action: "forward",
       forwarded_to: finId,
-      notes: "Aprovado. Encaminhando para o financeiro.",
     },
   })
-  if (r15a.status !== 200) fail("Approval action (forward)", r15a.data)
+  if (r14a.status !== 200) fail("Approval action (forward)", r14a.data)
   ok("Approval action recorded (forward to financial)")
 
-  const r15b = await api(`/api/collections/expense_reports/records/${reportId}`, {
+  const r14b = await api(`/api/collections/expense_reports/records/${reportId}`, {
     method: "PATCH",
     headers: bearer(approver.token),
     body: {
@@ -320,31 +404,28 @@ async function run() {
       approved_at: new Date().toISOString(),
     },
   })
-  if (r15b.status !== 200) fail("Report approval", r15b.data)
+  if (r14b.status !== 200) fail("Report approval", r14b.data)
   ok("Report status → approved")
 
-  // ── 16. Financial marks report as paid ────────────────────────────────────
-  console.log("\n16. Financial marks report as paid...")
-  const r16a = await api("/api/collections/approval_actions/records", {
+  // ── 15. Financial marks report as paid ───────────────────────────────────
+  console.log("\n15. Financial marks report as paid...")
+  const r15a = await api("/api/collections/approval_actions/records", {
     method: "POST",
     headers: bearer(fin.token),
     body: {
       report: reportId,
-      company: companyId,
-      user: finId,
-      action: "pay",
-      notes: "Pagamento processado.",
+      company: companyId,      user: finId,      action: "pay",
     },
   })
-  if (r16a.status !== 200) fail("Approval action (pay)", r16a.data)
+  if (r15a.status !== 200) fail("Approval action (pay)", r15a.data)
   ok("Approval action recorded (pay)")
 
-  const r16b = await api(`/api/collections/expense_reports/records/${reportId}`, {
+  const r15b = await api(`/api/collections/expense_reports/records/${reportId}`, {
     method: "PATCH",
     headers: bearer(fin.token),
     body: { status: "paid" },
   })
-  if (r16b.status !== 200) fail("Report marked as paid", r16b.data)
+  if (r15b.status !== 200) fail("Report marked as paid", r15b.data)
   ok("Report status → paid")
 
   // ── Summary ───────────────────────────────────────────────────────────────
