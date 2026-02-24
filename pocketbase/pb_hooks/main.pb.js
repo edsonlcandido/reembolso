@@ -2,6 +2,7 @@
 
 /**
  * PocketBase Hook: SPA Routing para o Web App
+
  * 
  * Este hook garante que todas as rotas do SPA (Single Page Application)
  * sejam servidas com o index.html correto, permitindo que o
@@ -241,3 +242,69 @@ routerAdd("POST", "/api/ai/read-receipt", (e) => {
     return e.json(500, { error: "Erro ao processar resposta da IA" })
   }
 }, $apis.requireAuth())
+
+/**
+ * Hook: Validação de Approver ao Criar approval_actions
+ *
+ * onRecordCreateRequest é acionado em cada requisição HTTP de criação de record.
+ * Valida que apenas approvers podem criar registros com action='forward'
+ */
+onRecordCreateRequest((e) => {
+  const action = e.record.get("action")
+  
+  // Se não é forward, deixa passar
+  if (action !== "forward") {
+    return e.next()
+  }
+
+  // Validar autenticação
+  const auth = e.auth
+  if (!auth || !auth.id) {
+    throw new BadRequestError("auth", "Autenticação necessária")
+  }
+
+  // Validar empresa
+  const companyId = e.record.get("company")
+  if (!companyId) {
+    throw new BadRequestError("company", "Empresa é obrigatória para forward")
+  }
+
+  // Validar role do usuário
+  try {
+    const companyUsers = $app.findRecordsByFilter(
+      "company_users",
+      `user = "${auth.id}" && company = "${companyId}"`,
+      "",
+      1,
+      0
+    )
+
+    if (!companyUsers || companyUsers.length === 0) {
+      throw new BadRequestError(
+        "permissions",
+        "Você não está vinculado a esta empresa"
+      )
+    }
+
+    const role = companyUsers[0].get("role")
+
+    if (role !== "approver" && role !== "admin") {
+      throw new BadRequestError(
+        "permissions",
+        `Apenas approvers podem encaminhar aprovações. Seu role: ${role}`
+      )
+    }
+  } catch (err) {
+    if (err instanceof BadRequestError) {
+      throw err
+    }
+    throw new BadRequestError("permissions", "Erro ao validar permissões: " + String(err))
+  }
+
+  return e.next()
+}, "approval_actions")
+
+
+
+
+
