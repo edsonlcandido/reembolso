@@ -48,7 +48,7 @@
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
               <input ref="fileInputRef" type="file" accept="image/*" @change="handleFileChange"
               class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
-              <button type="button" @click="openCameraCapture"
+              <button type="button" @click.prevent.stop="openCameraCapture"
                 class="inline-flex items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 transition-all">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h2l1.5-2h7L17 7h2a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
@@ -187,7 +187,9 @@ function resetForm() {
   errorMsg.value = ''
 }
 
-function openCameraCapture() {
+function openCameraCapture(e?: Event) {
+  e?.preventDefault()
+  e?.stopPropagation()
   cameraInputRef.value?.click()
 }
 
@@ -195,18 +197,18 @@ function handleFileChange(e: Event) {
   const input = e.target as HTMLInputElement
   if (input.files && input.files[0]) {
     receiptFile.value = input.files[0]
-    successMsg.value = 'Comprovante selecionado. Clique em Salvar Despesa para enviar.'
+    successMsg.value = 'Comprovante selecionado. Pronto para envio e análise.'
     errorMsg.value = ''
   }
 }
 
-function handleCameraChange(e: Event) {
+async function handleCameraChange(e: Event) {
   const input = e.target as HTMLInputElement
   if (input.files && input.files[0]) {
     receiptFile.value = input.files[0]
-    successMsg.value = 'Foto capturada com sucesso! Clique em Salvar Despesa para enviar.'
+    successMsg.value = 'Foto capturada com sucesso! Analisando comprovante...'
     errorMsg.value = ''
-    void analyzeWithAI()
+    await analyzeWithAI()
   }
 }
 

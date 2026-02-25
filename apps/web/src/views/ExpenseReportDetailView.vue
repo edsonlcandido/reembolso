@@ -163,7 +163,7 @@
                 <input ref="fileInputRef" type="file" accept="image/*" @change="handleFileChange" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
                 <button
                   type="button"
-                  @click="openCameraCapture"
+                  @click.prevent.stop="openCameraCapture"
                   class="inline-flex items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 transition-all"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -766,22 +766,24 @@ function handleFileChange(e: Event) {
   const input = e.target as HTMLInputElement
   if (input.files && input.files[0]) {
     receiptFile.value = input.files[0]
-    successMsg.value = 'Comprovante selecionado. Clique em Salvar para enviar.'
+    successMsg.value = 'Comprovante selecionado. Pronto para envio e análise.'
     errorMsg.value = ''
   }
 }
 
-function handleCameraChange(e: Event) {
+async function handleCameraChange(e: Event) {
   const input = e.target as HTMLInputElement
   if (input.files && input.files[0]) {
     receiptFile.value = input.files[0]
-    successMsg.value = 'Foto capturada com sucesso! Clique em Salvar para enviar.'
+    successMsg.value = 'Foto capturada com sucesso! Analisando comprovante...'
     errorMsg.value = ''
-    void analyzeWithAI()
+    await analyzeWithAI()
   }
 }
 
-function openCameraCapture() {
+function openCameraCapture(e?: Event) {
+  e?.preventDefault()
+  e?.stopPropagation()
   cameraInputRef.value?.click()
 }
 
