@@ -202,13 +202,12 @@ function handleFileChange(e: Event) {
   }
 }
 
-async function handleCameraChange(e: Event) {
+function handleCameraChange(e: Event) {
   const input = e.target as HTMLInputElement
   if (input.files && input.files[0]) {
     receiptFile.value = input.files[0]
-    successMsg.value = 'Foto capturada com sucesso! Analisando comprovante...'
+    successMsg.value = 'Foto capturada com sucesso! Clique em Analisar com IA.'
     errorMsg.value = ''
-    await analyzeWithAI()
   }
 }
 
