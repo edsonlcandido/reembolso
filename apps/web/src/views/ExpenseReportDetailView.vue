@@ -159,7 +159,21 @@
           <form @submit.prevent="handleAddItem" class="space-y-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Comprovante</label>
-              <input ref="fileInputRef" type="file" accept="image/*" @change="handleFileChange" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <input ref="fileInputRef" type="file" accept="image/*" @change="handleFileChange" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                <button
+                  type="button"
+                  @click="openCameraCapture"
+                  class="inline-flex items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 transition-all"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h2l1.5-2h7L17 7h2a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <circle cx="12" cy="13" r="3" />
+                  </svg>
+                  Tirar foto
+                </button>
+              </div>
+              <input ref="cameraInputRef" type="file" accept="image/*" capture="environment" @change="handleFileChange" class="hidden" />
               <div class="mt-2">
                 <button
                   type="button"
@@ -629,6 +643,7 @@ const rejectionReason = ref('')
 const returnReason = ref('')
 const receiptFile = ref<File | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
+const cameraInputRef = ref<HTMLInputElement | null>(null)
 const analyzingReceipt = ref(false)
 const submitting = ref(false)
 const categories = ref<RecordModel[]>([])
@@ -751,6 +766,10 @@ function handleFileChange(e: Event) {
   }
 }
 
+function openCameraCapture() {
+  cameraInputRef.value?.click()
+}
+
 async function analyzeWithAI() {
   if (!receiptFile.value) return
 
@@ -792,6 +811,7 @@ function resetItemForm() {
   itemForm.value = { date: '', category: '', amountDisplay: '', merchant: '', description: '', notes: '' }
   receiptFile.value = null
   if (fileInputRef.value) fileInputRef.value.value = ''
+  if (cameraInputRef.value) cameraInputRef.value.value = ''
 }
 
 async function handleAddItem() {
