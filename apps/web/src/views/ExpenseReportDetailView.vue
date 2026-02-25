@@ -173,7 +173,7 @@
                   Tirar foto
                 </button>
               </div>
-              <input ref="cameraInputRef" type="file" accept="image/*" capture="environment" @change="handleFileChange" class="hidden" />
+              <input ref="cameraInputRef" type="file" accept="image/*" capture="environment" @change="handleCameraChange" class="hidden" />
               <div class="mt-2">
                 <button
                   type="button"
@@ -191,6 +191,9 @@
                   {{ analyzingReceipt ? 'Analisando...' : 'Analisar com IA' }}
                 </button>
               </div>
+              <p v-if="receiptFile" class="mt-2 text-sm text-emerald-700">
+                Comprovante pronto para envio: <span class="font-medium">{{ receiptFile.name }}</span>
+              </p>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -233,7 +236,7 @@
                 :disabled="submitting || expensesStore.loading"
                 class="rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-2.5 text-sm font-semibold text-white shadow hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50"
               >
-                Salvar
+                {{ submitting ? 'Enviando comprovante...' : 'Salvar' }}
               </button>
               <button
                 type="button"
@@ -763,6 +766,18 @@ function handleFileChange(e: Event) {
   const input = e.target as HTMLInputElement
   if (input.files && input.files[0]) {
     receiptFile.value = input.files[0]
+    successMsg.value = 'Comprovante selecionado. Clique em Salvar para enviar.'
+    errorMsg.value = ''
+  }
+}
+
+function handleCameraChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  if (input.files && input.files[0]) {
+    receiptFile.value = input.files[0]
+    successMsg.value = 'Foto capturada com sucesso! Clique em Salvar para enviar.'
+    errorMsg.value = ''
+    void analyzeWithAI()
   }
 }
 
