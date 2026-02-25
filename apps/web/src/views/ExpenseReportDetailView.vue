@@ -125,13 +125,33 @@
             </template>
             <template v-if="report.status === 'approved' && isApprover">
               <button
+                @click="showRejectModal = true"
+                :disabled="submitting"
+                class="rounded-lg bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700 transition-all disabled:opacity-50"
+              >
+                Rejeitar
+              </button>
+              <button
+                @click="showForwardModal = true"
+                :disabled="submitting"
+                class="rounded-lg border border-blue-300 px-5 py-2.5 text-sm font-semibold text-blue-700 hover:bg-blue-50 transition-all disabled:opacity-50"
+              >
+                Encaminhar
+              </button>
+              <button
                 @click="handlePayReport"
-                :disabled="submitting || expensesStore.loading"
+                :disabled="submitting || expensesStore.loading || !canCurrentUserPayReport"
                 class="rounded-lg bg-purple-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-purple-700 transition-all disabled:opacity-50"
               >
                 Pagar Tudo
               </button>
             </template>
+            <p
+              v-if="report.status === 'approved' && isApprover && !canCurrentUserPayReport"
+              class="w-full text-sm text-amber-700"
+            >
+              Você aprovou este relatório. Encaminhe para outro aprovador para registrar o pagamento.
+            </p>
             <router-link
               to="/reports"
               class="rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all"
@@ -312,7 +332,7 @@
                       <input
                         type="checkbox"
                         :checked="item.paid"
-                        :disabled="submitting || expensesStore.loading"
+                        :disabled="submitting || expensesStore.loading || (!canCurrentUserPayReport && !item.paid)"
                         @change="handleToggleItemPaid(item)"
                         class="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 disabled:opacity-50"
                       />
@@ -692,6 +712,12 @@ const isApprover = computed(() =>
 const isReportOwner = computed(() =>
   report.value?.user === (pb.authStore.record?.id ?? '')
 )
+
+const canCurrentUserPayReport = computed(() => {
+  if (!report.value || !isApprover.value) return false
+  if (!report.value.approved_by) return true
+  return report.value.approved_by !== (pb.authStore.record?.id ?? '')
+})
 
 const isSubmitDisabled = computed(() =>
   approverMembers.value.length > 0 && !submitTargetUserId.value

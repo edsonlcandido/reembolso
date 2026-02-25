@@ -222,10 +222,24 @@ export const useExpensesStore = defineStore('expenses', () => {
   async function payReport(id: string, notes?: string) {
     loading.value = true
     try {
+      const report = await pb.collection('expense_reports').getOne(id)
+      const currentUserId = pb.authStore.record?.id
+      const companyStore = useCompanyStore()
+
+      if (
+        (companyStore.currentUserRole === 'admin' || companyStore.currentUserRole === 'approver') &&
+        report.approved_by &&
+        report.approved_by === currentUserId
+      ) {
+        return { success: false, error: 'Quem aprova o relatório não pode efetuar o pagamento deste mesmo relatório.' }
+      }
+
       const record = await pb.collection('expense_reports').update(id, {
         status: 'paid',
+        paid_by: currentUserId,
+        paid_at: new Date().toISOString(),
       })
-      const companyStore = useCompanyStore()
+
       try {
         await pb.collection('approval_actions').create({
           report: id,
@@ -246,9 +260,22 @@ export const useExpensesStore = defineStore('expenses', () => {
   async function markItemPaid(itemId: string, reportId: string, paid: boolean) {
     loading.value = true
     try {
+      const report = await pb.collection('expense_reports').getOne(reportId)
+      const currentUserId = pb.authStore.record?.id
+      const companyStore = useCompanyStore()
+
+      if (
+        paid &&
+        (companyStore.currentUserRole === 'admin' || companyStore.currentUserRole === 'approver') &&
+        report.approved_by &&
+        report.approved_by === currentUserId
+      ) {
+        return { success: false, error: 'Quem aprova o relatório não pode efetuar o pagamento deste mesmo relatório.' }
+      }
+
       await pb.collection('expense_items').update(itemId, {
         paid,
-        paid_by: paid ? pb.authStore.record?.id : null,
+        paid_by: paid ? currentUserId : null,
         paid_at: paid ? new Date().toISOString() : null,
       })
       // Recalculate report status based on item payment state
@@ -265,16 +292,22 @@ export const useExpensesStore = defineStore('expenses', () => {
         } else {
           newStatus = 'partially_paid'
         }
-        const report = await pb.collection('expense_reports').getOne(reportId)
         if (['approved', 'paid', 'partially_paid'].includes(report.status)) {
-          const companyStore = useCompanyStore()
-          await pb.collection('expense_reports').update(reportId, { status: newStatus })
+          const reportPaymentPatch: Record<string, any> = { status: newStatus }
+          if (newStatus === 'approved') {
+            reportPaymentPatch.paid_by = null
+            reportPaymentPatch.paid_at = null
+          } else {
+            reportPaymentPatch.paid_by = currentUserId
+            reportPaymentPatch.paid_at = new Date().toISOString()
+          }
+          await pb.collection('expense_reports').update(reportId, reportPaymentPatch)
           if (newStatus === 'paid' || newStatus === 'partially_paid') {
             try {
               await pb.collection('approval_actions').create({
                 report: reportId,
                 company: companyStore.currentCompany?.id,
-                user: pb.authStore.record?.id,
+                user: currentUserId,
                 action: newStatus === 'paid' ? 'pay' : 'partially_pay',
               })
             } catch (_) {}
