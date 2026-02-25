@@ -246,7 +246,14 @@
             >
               <div class="flex flex-col sm:flex-row sm:items-start gap-4">
                 <div v-if="item.receipt_image" class="flex-shrink-0">
-                  <img :src="getFileUrl(item)" class="w-16 h-16 rounded-lg object-cover border border-gray-200" />
+                  <button
+                    type="button"
+                    @click="openReceiptDetailModal(item)"
+                    class="rounded-lg border border-gray-200 overflow-hidden hover:border-blue-300 transition-all"
+                    title="Ver detalhes do comprovante"
+                  >
+                    <img :src="getFileUrl(item)" class="w-16 h-16 object-cover" />
+                  </button>
                 </div>
                 <div class="flex-1 min-w-0">
                   <div class="flex items-center gap-3 mb-1">
@@ -263,6 +270,14 @@
                   <p v-if="item.date" class="text-xs text-gray-400 mt-1">{{ new Date(item.date).toLocaleDateString('pt-BR') }}</p>
                 </div>
                 <div class="flex gap-2 items-center">
+                  <button
+                    v-if="item.receipt_image"
+                    @click="openReceiptDetailModal(item)"
+                    class="rounded-lg border border-gray-300 p-2 text-gray-600 hover:bg-gray-100 hover:text-gray-800 transition-all"
+                    title="Ver detalhes do comprovante"
+                  >
+                    <EyeIcon class="h-4 w-4" />
+                  </button>
                   <template v-if="isApprover && ['approved', 'partially_paid', 'paid'].includes(report.status)">
                     <label class="flex items-center gap-2 cursor-pointer select-none" :title="item.paid ? 'Clique para desmarcar como pago' : 'Clique para marcar como pago'">
                       <input
@@ -303,6 +318,73 @@
     <div v-else class="bg-white rounded-2xl shadow-xl p-12 text-center">
       <p class="text-gray-500">Relatório não encontrado.</p>
       <router-link to="/reports" class="mt-4 inline-block text-blue-600 hover:underline">Voltar aos relatórios</router-link>
+    </div>
+
+    <div
+      v-if="showReceiptDetailModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      @click.self="closeReceiptDetailModal"
+    >
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+        <div class="sticky top-0 z-10 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
+          <h3 class="text-lg font-bold text-gray-900">Detalhes do comprovante</h3>
+          <button
+            type="button"
+            @click="closeReceiptDetailModal"
+            class="rounded-lg border border-gray-300 p-2 text-gray-600 hover:bg-gray-100 transition-all"
+            title="Fechar"
+          >
+            <XMarkIcon class="h-5 w-5" />
+          </button>
+        </div>
+
+        <div v-if="selectedReceiptItem" class="p-6 space-y-6">
+          <img
+            :src="getFileUrl(selectedReceiptItem)"
+            class="w-full max-h-[55vh] object-contain rounded-xl border border-gray-200 bg-gray-50"
+            alt="Comprovante da despesa"
+          />
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+            <div>
+              <p class="text-gray-500">Valor</p>
+              <p class="font-semibold text-gray-900">{{ formatCurrency(selectedReceiptItem.amount || 0) }}</p>
+            </div>
+            <div>
+              <p class="text-gray-500">Data</p>
+              <p class="font-semibold text-gray-900">{{ selectedReceiptItem.date ? new Date(selectedReceiptItem.date).toLocaleDateString('pt-BR') : 'Não informada' }}</p>
+            </div>
+            <div>
+              <p class="text-gray-500">Categoria</p>
+              <p class="font-semibold text-gray-900">{{ selectedReceiptItem.category ? categoryLabel(selectedReceiptItem.category) : 'Não informada' }}</p>
+            </div>
+            <div>
+              <p class="text-gray-500">Estabelecimento</p>
+              <p class="font-semibold text-gray-900">{{ selectedReceiptItem.merchant || 'Não informado' }}</p>
+            </div>
+            <div class="sm:col-span-2" v-if="selectedReceiptItem.description">
+              <p class="text-gray-500">Descrição</p>
+              <p class="font-semibold text-gray-900">{{ selectedReceiptItem.description }}</p>
+            </div>
+            <div class="sm:col-span-2" v-if="selectedReceiptItem.notes">
+              <p class="text-gray-500">Observações</p>
+              <p class="font-semibold text-gray-900 whitespace-pre-line">{{ selectedReceiptItem.notes }}</p>
+            </div>
+          </div>
+
+          <div class="flex justify-end">
+            <a
+              :href="getFileUrl(selectedReceiptItem)"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex items-center gap-2 rounded-lg border border-blue-300 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50 transition-all"
+            >
+              <ArrowTopRightOnSquareIcon class="h-4 w-4" />
+              Abrir comprovante em nova aba
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div
@@ -525,7 +607,7 @@ import { useCompanyStore } from '../stores/company'
 import { useRoute, useRouter } from 'vue-router'
 import { ref, computed, onMounted } from 'vue'
 import pb from '../services/pocketbase'
-import { PlusIcon, TrashIcon, ClipboardDocumentListIcon, PencilIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon, TrashIcon, ClipboardDocumentListIcon, PencilIcon, EyeIcon, XMarkIcon, ArrowTopRightOnSquareIcon } from '@heroicons/vue/24/outline'
 import type { RecordModel } from 'pocketbase'
 
 const route = useRoute()
@@ -552,6 +634,7 @@ const submitting = ref(false)
 const categories = ref<RecordModel[]>([])
 const showEditItemModal = ref(false)
 const editingItem = ref<RecordModel | null>(null)
+const selectedReceiptItem = ref<RecordModel | null>(null)
 const editItemForm = ref({
   date: '',
   category: '',
@@ -583,6 +666,8 @@ const isReportOwner = computed(() =>
 const isSubmitDisabled = computed(() =>
   approverMembers.value.length > 0 && !submitTargetUserId.value
 )
+
+const showReceiptDetailModal = computed(() => !!selectedReceiptItem.value)
 
 function formatCurrency(cents: number): string {
   return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -648,6 +733,15 @@ function resolveAICategory(aiValue: string): string {
 function getFileUrl(item: any): string {
   if (!item.receipt_image) return ''
   return pb.files.getURL(item, item.receipt_image)
+}
+
+function openReceiptDetailModal(item: RecordModel) {
+  if (!item.receipt_image) return
+  selectedReceiptItem.value = item
+}
+
+function closeReceiptDetailModal() {
+  selectedReceiptItem.value = null
 }
 
 function handleFileChange(e: Event) {
