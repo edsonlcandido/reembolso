@@ -348,7 +348,6 @@ export const useExpensesStore = defineStore('expenses', () => {
       const records = await pb.collection('approval_actions').getFullList({
         filter: `report="${reportId}"`,
         sort: '-created',
-        expand: 'user,forwarded_to',
       })
       return { success: true, data: records }
     } catch (error: any) {
