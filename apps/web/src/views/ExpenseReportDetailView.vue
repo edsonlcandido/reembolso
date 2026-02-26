@@ -313,32 +313,35 @@
                     <p v-if="item.date" class="text-xs text-gray-400 mt-1">{{ new Date(item.date).toLocaleDateString('pt-BR') }}</p>
                   </div>
                 </div>
-                <div class="flex gap-2 items-center justify-end sm:ml-auto sm:justify-start sm:self-center">
+                <div class="flex w-full gap-2 items-center justify-start sm:w-auto sm:ml-auto sm:justify-start sm:self-center">
                   <button
                     v-if="item.receipt_image"
                     @click="openReceiptDetailModal(item)"
-                    class="rounded-lg border border-gray-300 p-2 text-gray-600 hover:bg-gray-100 hover:text-gray-800 transition-all"
+                    class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-800 transition-all sm:p-2 sm:text-base"
                     title="Ver detalhes do comprovante"
                   >
                     <EyeIcon class="h-4 w-4" />
+                    <span class="sm:hidden">Ver</span>
                   </button>
                   
                   <button
                     v-if="report.status === 'draft'"
                     @click="openEditItemModal(item)"
                     :disabled="submitting || expensesStore.loading"
-                    class="rounded-lg border border-blue-300 p-2 text-blue-600 hover:bg-blue-50 transition-all disabled:opacity-50"
+                    class="inline-flex items-center gap-1.5 rounded-lg border border-blue-300 px-3 py-2 text-xs font-medium text-blue-600 hover:bg-blue-50 transition-all disabled:opacity-50 sm:p-2 sm:text-base"
                     title="Editar despesa"
                   >
                     <PencilIcon class="h-4 w-4" />
+                    <span class="sm:hidden">Editar</span>
                   </button>
                   <button
                     v-if="report.status === 'draft'"
                     @click="handleRemoveItem(item.id)"
                     :disabled="submitting || expensesStore.loading"
-                    class="rounded-lg border border-red-300 p-2 text-red-600 hover:bg-red-50 transition-all disabled:opacity-50"
+                    class="inline-flex items-center gap-1.5 rounded-lg border border-red-300 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 transition-all disabled:opacity-50 sm:p-2 sm:text-base"
                   >
                     <TrashIcon class="h-4 w-4" />
+                    <span class="sm:hidden">Deletar</span>
                   </button>
                 </div>
               </div>
