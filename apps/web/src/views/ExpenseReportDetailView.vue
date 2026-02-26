@@ -778,8 +778,7 @@ function approvalActionLabel(action: string): string {
 }
 
 function approvalActionUserName(action: RecordModel): string {
-  const expandedUser = action.expand?.user as RecordModel | undefined
-  return expandedUser?.name || expandedUser?.email || expandedUser?.id || action.user || 'Usuário não identificado'
+  return action.user || 'Usuário não identificado'
 }
 
 const reportWorkflowHistory = computed<ReportHistoryEntry[]>(() =>
