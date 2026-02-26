@@ -162,29 +162,6 @@
         </div>
       </div>
 
-      <div v-if="reportWorkflowHistory.length > 0" class="bg-white rounded-2xl shadow-xl overflow-hidden">
-        <div class="px-8 py-6 border-b border-gray-100">
-          <h2 class="text-xl font-bold text-gray-900">Histórico do Relatório</h2>
-          <p class="mt-1 text-sm text-gray-500">Fluxo completo da solicitação até aprovação, retorno e pagamento.</p>
-        </div>
-        <div class="px-8 py-6">
-          <ol class="space-y-4">
-            <li
-              v-for="(entry, index) in reportWorkflowHistory"
-              :key="`${entry.timestamp}-${index}`"
-              class="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3"
-            >
-              <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                <p class="text-sm font-semibold text-gray-900">{{ entry.action }}</p>
-                <span class="text-xs font-medium text-gray-500">{{ formatDateTime(entry.timestamp) }}</span>
-              </div>
-              <p class="text-sm text-gray-700">Usuário: {{ entry.user }}</p>
-              <p v-if="entry.notes" class="text-sm text-amber-700 mt-1">Mensagem: {{ entry.notes }}</p>
-            </li>
-          </ol>
-        </div>
-      </div>
-
       <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
         <div class="px-8 py-6 border-b border-gray-100 flex items-center justify-between">
           <h2 class="text-xl font-bold text-gray-900">Itens de Despesa</h2>
@@ -385,6 +362,37 @@
           </div>
         </div>
       </div>
+
+      <div v-if="reportWorkflowHistory.length > 0" class="bg-white rounded-2xl shadow-xl overflow-hidden">
+        <button
+          type="button"
+          @click="showHistorySection = !showHistorySection"
+          class="w-full px-8 py-6 border-b border-gray-100 flex items-center justify-between text-left hover:bg-gray-50 transition-all"
+        >
+          <div>
+            <h2 class="text-xl font-bold text-gray-900">Histórico do Relatório</h2>
+            <p class="mt-1 text-sm text-gray-500">Fluxo completo da solicitação até aprovação, retorno e pagamento.</p>
+          </div>
+          <span class="text-sm font-semibold text-blue-700">{{ showHistorySection ? 'Ocultar' : 'Mostrar' }}</span>
+        </button>
+        <div v-if="showHistorySection" class="px-8 py-6">
+          <ol class="space-y-4">
+            <li
+              v-for="(entry, index) in reportWorkflowHistoryDescending"
+              :key="`${entry.timestamp}-${index}`"
+              class="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3"
+            >
+              <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <p class="text-sm font-semibold text-gray-900">{{ entry.action }}</p>
+                <span class="text-xs font-medium text-gray-500">{{ formatDateTime(entry.timestamp) }}</span>
+              </div>
+              <p class="text-sm text-gray-700">Usuário: {{ entry.user }}</p>
+              <p v-if="entry.notes" class="text-sm text-amber-700 mt-1">Mensagem: {{ entry.notes }}</p>
+            </li>
+          </ol>
+        </div>
+      </div>
+
     </template>
 
     <div v-else class="bg-white rounded-2xl shadow-xl p-12 text-center">
@@ -693,6 +701,7 @@ const showRejectModal = ref(false)
 const showReturnModal = ref(false)
 const showForwardModal = ref(false)
 const showSubmitModal = ref(false)
+const showHistorySection = ref(false)
 const submitTargetUserId = ref('')
 const forwardTargetUserId = ref('')
 const forwardNotes = ref('')
@@ -813,6 +822,12 @@ const reportWorkflowHistory = computed<ReportHistoryEntry[]>(() => {
     },
   ]
 })
+
+const reportWorkflowHistoryDescending = computed<ReportHistoryEntry[]>(() =>
+  [...reportWorkflowHistory.value].sort((a, b) =>
+    new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  )
+)
 
 function formatCurrency(cents: number): string {
   return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
