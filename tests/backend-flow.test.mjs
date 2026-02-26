@@ -22,7 +22,8 @@
  *  12. Create financial user and link to company
  *  13. Admin promotes financial user to approver
  *  14. Approver approves report and forwards to financial
- *  15. Financial marks report as paid
+ *  15. Test: approver who approved CANNOT register payment action
+ *  16. Financial marks report as paid
  *
  * Usage:
  *   POCKETBASE_URL=http://localhost:8090 node tests/backend-flow.test.mjs
@@ -407,8 +408,24 @@ async function run() {
   if (r14b.status !== 200) fail("Report approval", r14b.data)
   ok("Report status → approved")
 
-  // ── 15. Financial marks report as paid ───────────────────────────────────
-  console.log("\n15. Financial marks report as paid...")
+  // ── 15. Validate segregation-of-duties on payment action ──────────────────
+  console.log("\n15. Validating payment segregation rule...")
+  const r15 = await api("/api/collections/approval_actions/records", {
+    method: "POST",
+    headers: bearer(approver.token),
+    body: {
+      report: reportId,
+      company: companyId,
+      user: approverId,
+      action: "pay",
+    },
+  })
+  if (r15.status === 200) fail("Approver who approved should NOT be able to create pay action", r15.data)
+  if (r15.status !== 400) fail("Pay action should be rejected with 400", r15.data)
+  ok("Approver who approved cannot create pay action (segregation rule enforced)")
+
+  // ── 16. Financial marks report as paid ───────────────────────────────────
+  console.log("\n16. Financial marks report as paid...")
   const r15a = await api("/api/collections/approval_actions/records", {
     method: "POST",
     headers: bearer(fin.token),
