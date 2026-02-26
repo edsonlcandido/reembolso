@@ -702,6 +702,7 @@ const showReturnModal = ref(false)
 const showForwardModal = ref(false)
 const showSubmitModal = ref(false)
 const showHistorySection = ref(false)
+const approvalActions = ref<RecordModel[]>([])
 const submitTargetUserId = ref('')
 const forwardTargetUserId = ref('')
 const forwardNotes = ref('')
@@ -764,64 +765,31 @@ type ReportHistoryEntry = {
   notes?: string
 }
 
-const reportWorkflowHistory = computed<ReportHistoryEntry[]>(() => {
-  if (!report.value?.submitted_at && report.value?.status === 'draft') return []
-
-  const flowStart = report.value?.submitted_at
-    ? new Date(report.value.submitted_at)
-    : new Date()
-
-  const addMinutes = (minutes: number) => {
-    const date = new Date(flowStart)
-    date.setMinutes(date.getMinutes() + minutes)
-    return date.toISOString()
+function approvalActionLabel(action: string): string {
+  switch (action) {
+    case 'approve': return 'Relatório aprovado'
+    case 'reject': return 'Relatório rejeitado'
+    case 'return_for_revision': return 'Relatório devolvido para revisão'
+    case 'forward': return 'Relatório encaminhado'
+    case 'pay': return 'Relatório marcado como pago'
+    case 'partially_pay': return 'Relatório parcialmente pago'
+    default: return action
   }
+}
 
-  return [
-    {
-      timestamp: addMinutes(0),
-      action: 'Relatório enviado para aprovação',
-      user: 'Funcionário',
-    },
-    {
-      timestamp: addMinutes(20),
-      action: 'Relatório reprovado e devolvido para o dono',
-      user: 'Aprovador 1',
-      notes: 'coloque o centro de custo',
-    },
-    {
-      timestamp: addMinutes(55),
-      action: 'Relatório editado e reenviado',
-      user: 'Funcionário',
-    },
-    {
-      timestamp: addMinutes(90),
-      action: 'Relatório aprovado e encaminhado para pagamento',
-      user: 'Aprovador 1',
-    },
-    {
-      timestamp: addMinutes(130),
-      action: 'Pagamento recusado e relatório devolvido ao funcionário',
-      user: 'Aprovador 2',
-      notes: 'valor reembolsavel da nota tal é no max 30',
-    },
-    {
-      timestamp: addMinutes(180),
-      action: 'Valor corrigido e relatório reenviado',
-      user: 'Funcionário',
-    },
-    {
-      timestamp: addMinutes(220),
-      action: 'Relatório aprovado e reencaminhado para segundo aprovador',
-      user: 'Aprovador 1',
-    },
-    {
-      timestamp: addMinutes(260),
-      action: 'Relatório marcado como pago',
-      user: 'Aprovador 2',
-    },
-  ]
-})
+function approvalActionUserName(action: RecordModel): string {
+  const expandedUser = action.expand?.user as RecordModel | undefined
+  return expandedUser?.name || expandedUser?.email || expandedUser?.id || action.user || 'Usuário não identificado'
+}
+
+const reportWorkflowHistory = computed<ReportHistoryEntry[]>(() =>
+  approvalActions.value.map((action) => ({
+    timestamp: action.created,
+    action: approvalActionLabel(action.action || ''),
+    user: approvalActionUserName(action),
+    notes: action.notes || '',
+  }))
+)
 
 const reportWorkflowHistoryDescending = computed<ReportHistoryEntry[]>(() =>
   [...reportWorkflowHistory.value].sort((a, b) =>
@@ -1297,6 +1265,8 @@ async function loadReport() {
     return
   }
   await expensesStore.fetchItems(id)
+  const actionsResult = await expensesStore.fetchApprovalActions(id)
+  approvalActions.value = actionsResult.success ? (actionsResult.data || []) : []
 }
 
 onMounted(async () => {
