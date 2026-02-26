@@ -93,13 +93,6 @@
                 Aprovar
               </button>
               <button
-                @click="showRejectModal = true"
-                :disabled="submitting"
-                class="rounded-lg bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700 transition-all disabled:opacity-50"
-              >
-                Rejeitar
-              </button>
-              <button
                 @click="showReturnModal = true"
                 :disabled="submitting"
                 class="rounded-lg border border-amber-400 px-5 py-2.5 text-sm font-semibold text-amber-700 hover:bg-amber-50 transition-all disabled:opacity-50"
@@ -125,11 +118,11 @@
             </template>
             <template v-if="report.status === 'approved' && isApprover">
               <button
-                @click="showRejectModal = true"
+                @click="showReturnModal = true"
                 :disabled="submitting"
-                class="rounded-lg bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700 transition-all disabled:opacity-50"
+                class="rounded-lg border border-amber-400 px-5 py-2.5 text-sm font-semibold text-amber-700 hover:bg-amber-50 transition-all disabled:opacity-50"
               >
-                Rejeitar
+                Devolver para Revisão
               </button>
               <button
                 @click="showForwardModal = true"
@@ -327,18 +320,7 @@
                   >
                     <EyeIcon class="h-4 w-4" />
                   </button>
-                  <template v-if="isApprover && ['approved', 'partially_paid', 'paid'].includes(report.status)">
-                    <label class="flex items-center gap-2 cursor-pointer select-none" :title="item.paid ? 'Clique para desmarcar como pago' : 'Clique para marcar como pago'">
-                      <input
-                        type="checkbox"
-                        :checked="item.paid"
-                        :disabled="submitting || expensesStore.loading || (!canCurrentUserPayReport && !item.paid)"
-                        @change="handleToggleItemPaid(item)"
-                        class="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 disabled:opacity-50"
-                      />
-                      <span class="text-xs text-gray-600 whitespace-nowrap">Pagar</span>
-                    </label>
-                  </template>
+                  
                   <button
                     v-if="report.status === 'draft'"
                     @click="openEditItemModal(item)"
@@ -362,6 +344,37 @@
           </div>
         </div>
       </div>
+
+      <div v-if="reportWorkflowHistory.length > 0" class="bg-white rounded-2xl shadow-xl overflow-hidden">
+        <button
+          type="button"
+          @click="showHistorySection = !showHistorySection"
+          class="w-full px-8 py-6 border-b border-gray-100 flex items-center justify-between text-left hover:bg-gray-50 transition-all"
+        >
+          <div>
+            <h2 class="text-xl font-bold text-gray-900">Histórico do Relatório</h2>
+            <p class="mt-1 text-sm text-gray-500">Fluxo completo da solicitação até aprovação, retorno e pagamento.</p>
+          </div>
+          <span class="text-sm font-semibold text-blue-700">{{ showHistorySection ? 'Ocultar' : 'Mostrar' }}</span>
+        </button>
+        <div v-if="showHistorySection" class="px-8 py-6">
+          <ol class="space-y-4">
+            <li
+              v-for="(entry, index) in reportWorkflowHistoryDescending"
+              :key="`${entry.timestamp}-${index}`"
+              class="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3"
+            >
+              <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <p class="text-sm font-semibold text-gray-900">{{ entry.action }}</p>
+                <span class="text-xs font-medium text-gray-500">{{ formatDateTime(entry.timestamp) }}</span>
+              </div>
+              <p class="text-sm text-gray-700">Usuário: {{ entry.user }}</p>
+              <p v-if="entry.notes" class="text-sm text-amber-700 mt-1">Mensagem: {{ entry.notes }}</p>
+            </li>
+          </ol>
+        </div>
+      </div>
+
     </template>
 
     <div v-else class="bg-white rounded-2xl shadow-xl p-12 text-center">
@@ -670,6 +683,8 @@ const showRejectModal = ref(false)
 const showReturnModal = ref(false)
 const showForwardModal = ref(false)
 const showSubmitModal = ref(false)
+const showHistorySection = ref(false)
+const approvalActions = ref<RecordModel[]>([])
 const submitTargetUserId = ref('')
 const forwardTargetUserId = ref('')
 const forwardNotes = ref('')
@@ -725,8 +740,51 @@ const isSubmitDisabled = computed(() =>
 
 const showReceiptDetailModal = computed(() => !!selectedReceiptItem.value)
 
+type ReportHistoryEntry = {
+  timestamp: string
+  action: string
+  user: string
+  notes?: string
+}
+
+function approvalActionLabel(action: string): string {
+  switch (action) {
+    case 'approve': return 'Relatório aprovado'
+    case 'reject': return 'Relatório rejeitado'
+    case 'return_for_revision': return 'Relatório devolvido para revisão'
+    case 'forward': return 'Relatório encaminhado'
+    case 'pay': return 'Relatório marcado como pago'
+    case 'partially_pay': return 'Relatório parcialmente pago'
+    default: return action
+  }
+}
+
+function approvalActionUserName(action: RecordModel): string {
+  const expandedUser = action.expand?.user as RecordModel | undefined
+  return expandedUser?.name || expandedUser?.email || action.user || 'Usuário não identificado'
+}
+
+const reportWorkflowHistory = computed<ReportHistoryEntry[]>(() =>
+  approvalActions.value.map((action) => ({
+    timestamp: action.created,
+    action: approvalActionLabel(action.action || ''),
+    user: approvalActionUserName(action),
+    notes: action.notes || '',
+  }))
+)
+
+const reportWorkflowHistoryDescending = computed<ReportHistoryEntry[]>(() =>
+  [...reportWorkflowHistory.value].sort((a, b) =>
+    new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  )
+)
+
 function formatCurrency(cents: number): string {
   return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
+
+function formatDateTime(value: string): string {
+  return new Date(value).toLocaleString('pt-BR')
 }
 
 function statusBadgeClass(status: string): string {
@@ -1129,23 +1187,6 @@ async function handlePayReport() {
   }
 }
 
-async function handleToggleItemPaid(item: RecordModel) {
-  if (!report.value) return
-  successMsg.value = ''
-  errorMsg.value = ''
-  submitting.value = true
-  try {
-    const result = await expensesStore.markItemPaid(item.id, report.value.id, !item.paid)
-    if (result.success) {
-      await loadReport()
-    } else {
-      errorMsg.value = result.error || 'Erro ao atualizar pagamento do item.'
-    }
-  } finally {
-    submitting.value = false
-  }
-}
-
 async function handleForwardReport() {
   if (!report.value || !forwardTargetUserId.value) return
   successMsg.value = ''
@@ -1189,6 +1230,8 @@ async function loadReport() {
     return
   }
   await expensesStore.fetchItems(id)
+  const actionsResult = await expensesStore.fetchApprovalActions(id)
+  approvalActions.value = actionsResult.success ? (actionsResult.data || []) : []
 }
 
 onMounted(async () => {

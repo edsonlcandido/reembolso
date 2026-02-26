@@ -153,6 +153,8 @@ export const useExpensesStore = defineStore('expenses', () => {
           user: pb.authStore.record?.id,
           action: 'approve',
           notes: notes || '',
+          created: new Date().toISOString(),
+          updated: new Date().toISOString(),
         })
       } catch (_) {}
       return { success: true, data: record }
@@ -180,6 +182,8 @@ export const useExpensesStore = defineStore('expenses', () => {
           user: pb.authStore.record?.id,
           action: 'reject',
           notes: reason,
+          created: new Date().toISOString(),
+          updated: new Date().toISOString(),
         })
       } catch (_) {}
       return { success: true, data: record }
@@ -209,6 +213,8 @@ export const useExpensesStore = defineStore('expenses', () => {
           user: pb.authStore.record?.id,
           action: 'return_for_revision',
           notes: reason,
+          created: new Date().toISOString(),
+          updated: new Date().toISOString(),
         })
       } catch (_) {}
       return { success: true, data: record }
@@ -247,6 +253,8 @@ export const useExpensesStore = defineStore('expenses', () => {
           user: pb.authStore.record?.id,
           action: 'pay',
           notes: notes || '',
+          created: new Date().toISOString(),
+          updated: new Date().toISOString(),
         })
       } catch (_) {}
       return { success: true, data: record }
@@ -309,6 +317,8 @@ export const useExpensesStore = defineStore('expenses', () => {
                 company: companyStore.currentCompany?.id,
                 user: currentUserId,
                 action: newStatus === 'paid' ? 'pay' : 'partially_pay',
+                created: new Date().toISOString(),
+                updated: new Date().toISOString(),
               })
             } catch (_) {}
           }
@@ -334,6 +344,8 @@ export const useExpensesStore = defineStore('expenses', () => {
         action: 'forward',
         notes,
         forwarded_to: targetUserId,
+        created: new Date().toISOString(),
+        updated: new Date().toISOString(),
       })
       return { success: true }
     } catch (error: any) {
@@ -348,7 +360,7 @@ export const useExpensesStore = defineStore('expenses', () => {
       const records = await pb.collection('approval_actions').getFullList({
         filter: `report="${reportId}"`,
         sort: '-created',
-        expand: 'user,forwarded_to',
+        expand: 'user',
       })
       return { success: true, data: records }
     } catch (error: any) {
