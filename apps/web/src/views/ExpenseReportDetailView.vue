@@ -286,32 +286,34 @@
               :key="item.id"
               class="bg-gray-50 rounded-xl p-5 hover:bg-gray-100 transition-all"
             >
-              <div class="flex items-start gap-4">
-                <div v-if="item.receipt_image" class="flex-shrink-0">
-                  <button
-                    type="button"
-                    @click="openReceiptDetailModal(item)"
-                    class="rounded-lg border border-gray-200 overflow-hidden hover:border-blue-300 transition-all"
-                    title="Ver detalhes do comprovante"
-                  >
-                    <img :src="getFileUrl(item)" class="h-16 w-16 object-cover sm:h-20 sm:w-20" />
-                  </button>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-3 mb-1">
-                    <span class="font-semibold text-gray-900">{{ formatCurrency(item.amount || 0) }}</span>
-                    <span v-if="item.category" class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                      {{ categoryLabel(item.category) }}
-                    </span>
-                    <span v-if="item.paid" class="px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
-                      Pago
-                    </span>
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
+                <div class="flex items-start gap-4 min-w-0">
+                  <div v-if="item.receipt_image" class="flex-shrink-0">
+                    <button
+                      type="button"
+                      @click="openReceiptDetailModal(item)"
+                      class="rounded-lg border border-gray-200 overflow-hidden hover:border-blue-300 transition-all"
+                      title="Ver detalhes do comprovante"
+                    >
+                      <img :src="getFileUrl(item)" class="h-16 w-16 object-cover sm:h-20 sm:w-20" />
+                    </button>
                   </div>
-                  <p v-if="item.merchant" class="text-sm text-gray-600">{{ item.merchant }}</p>
-                  <p v-if="item.description" class="text-sm text-gray-500">{{ item.description }}</p>
-                  <p v-if="item.date" class="text-xs text-gray-400 mt-1">{{ new Date(item.date).toLocaleDateString('pt-BR') }}</p>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-3 mb-1">
+                      <span class="font-semibold text-gray-900">{{ formatCurrency(item.amount || 0) }}</span>
+                      <span v-if="item.category" class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                        {{ categoryLabel(item.category) }}
+                      </span>
+                      <span v-if="item.paid" class="px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
+                        Pago
+                      </span>
+                    </div>
+                    <p v-if="item.merchant" class="text-sm text-gray-600">{{ item.merchant }}</p>
+                    <p v-if="item.description" class="text-sm text-gray-500">{{ item.description }}</p>
+                    <p v-if="item.date" class="text-xs text-gray-400 mt-1">{{ new Date(item.date).toLocaleDateString('pt-BR') }}</p>
+                  </div>
                 </div>
-                <div class="flex gap-2 items-center">
+                <div class="flex gap-2 items-center justify-end sm:ml-auto sm:justify-start sm:self-center">
                   <button
                     v-if="item.receipt_image"
                     @click="openReceiptDetailModal(item)"
