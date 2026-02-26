@@ -134,7 +134,7 @@
             >
               <div class="min-w-0 flex-1">
                 <p class="text-sm font-semibold text-gray-900 truncate">{{ report.title }}</p>
-                <p class="text-xs text-gray-500 mt-1">{{ formatDate(report.created) }}</p>
+                <p class="text-xs text-gray-500 mt-1" v-if="report.period_start">{{ formatDate(report.period_start) }}</p>
               </div>
               <div class="flex items-center gap-3 ml-4">
                 <span class="text-sm font-medium text-gray-900">{{ formatCurrency(report.total_amount) }}</span>

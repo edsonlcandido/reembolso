@@ -103,13 +103,22 @@
 import { useExpensesStore } from '../stores/expenses'
 import { useCompanyStore } from '../stores/company'
 import { useRouter } from 'vue-router'
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 
 const router = useRouter()
 const expensesStore = useExpensesStore()
 const companyStore = useCompanyStore()
 
 const errorMsg = ref('')
+
+// Função para obter data de hoje no formato YYYY-MM-DD
+function getTodayDate(): string {
+  const today = new Date()
+  const year = today.getFullYear()
+  const month = String(today.getMonth() + 1).padStart(2, '0')
+  const day = String(today.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
 
 const form = ref({
   title: '',
@@ -118,6 +127,11 @@ const form = ref({
   cost_center: '',
   project: '',
   description: '',
+})
+
+onMounted(() => {
+  // Define a data inicial como hoje
+  form.value.period_start = getTodayDate()
 })
 
 async function handleSubmit() {

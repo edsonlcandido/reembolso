@@ -35,15 +35,6 @@
 
         <form @submit.prevent="handleAddItem" class="space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Relatório <span
-                class="text-red-500">*</span></label>
-            <select v-model="selectedReportId" required
-              class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
-              <option value="">Selecionar relatório</option>
-              <option v-for="r in draftReports" :key="r.id" :value="r.id">{{ r.title }}</option>
-            </select>
-          </div>
-          <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Comprovante</label>
             <div class="rounded-xl border border-blue-100 bg-white p-3">
               <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -141,7 +132,15 @@
               class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
               placeholder="Observações adicionais" />
           </div>
-
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Relatório <span
+                class="text-red-500">*</span></label>
+            <select v-model="selectedReportId" required
+              class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+              <option value="">Selecionar relatório</option>
+              <option v-for="r in draftReports" :key="r.id" :value="r.id">{{ r.title }}</option>
+            </select>
+          </div>
           <div class="flex gap-3 pt-2">
             <button type="submit" :disabled="submitting || draftReports.length === 0"
               class="rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-2.5 text-sm font-semibold text-white shadow hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50">

@@ -15,9 +15,9 @@
             <div>
               <h1 class="text-2xl font-bold text-white">{{ report.title }}</h1>
               <p class="text-blue-100 mt-1">
-                <span v-if="report.period_start">{{ report.period_start }}</span>
+                <span v-if="report.period_start">{{ formatDate(report.period_start) }}</span>
                 <span v-if="report.period_start && report.period_end"> — </span>
-                <span v-if="report.period_end">{{ report.period_end }}</span>
+                <span v-if="report.period_end">{{ formatDate(report.period_end) }}</span>
               </p>
             </div>
             <div class="flex items-center gap-3">
@@ -117,6 +117,13 @@
               </button>
             </template>
             <template v-if="report.status === 'approved' && isApprover">
+                            <button
+                @click="handlePayReport"
+                :disabled="submitting || expensesStore.loading || !canCurrentUserPayReport"
+                class="rounded-lg bg-purple-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-purple-700 transition-all disabled:opacity-50"
+              >
+                Pagar
+              </button>
               <button
                 @click="showReturnModal = true"
                 :disabled="submitting"
@@ -131,13 +138,7 @@
               >
                 Encaminhar
               </button>
-              <button
-                @click="handlePayReport"
-                :disabled="submitting || expensesStore.loading || !canCurrentUserPayReport"
-                class="rounded-lg bg-purple-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-purple-700 transition-all disabled:opacity-50"
-              >
-                Pagar Tudo
-              </button>
+
             </template>
             <p
               v-if="report.status === 'approved' && isApprover && !canCurrentUserPayReport"
@@ -786,6 +787,10 @@ const reportWorkflowHistoryDescending = computed<ReportHistoryEntry[]>(() =>
 
 function formatCurrency(cents: number): string {
   return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
+
+function formatDate(value: string): string {
+  return new Date(value).toLocaleDateString('pt-BR')
 }
 
 function formatDateTime(value: string): string {

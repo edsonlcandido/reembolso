@@ -41,9 +41,8 @@
             <h3 class="font-semibold text-gray-900 truncate">{{ report.title }}</h3>
             <div class="flex flex-wrap gap-3 mt-2 text-sm text-gray-500">
               <span v-if="report.period_start || report.period_end">
-                {{ report.period_start }} — {{ report.period_end }}
+                {{ formatDate(report.period_start) }} — {{ formatDate(report.period_end) }}
               </span>
-              <span>{{ new Date(report.created).toLocaleDateString('pt-BR') }}</span>
               <span v-if="report.expand?.user" class="text-gray-600 font-medium">
                 {{ report.expand.user.name || report.expand.user.email }}
               </span>
@@ -80,6 +79,11 @@ const errorMsg = ref('')
 
 function formatCurrency(cents: number): string {
   return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
+
+function formatDate(value: string): string {
+  if (!value) return ''
+  return new Date(value).toLocaleDateString('pt-BR')
 }
 
 async function loadPendingApprovals() {
