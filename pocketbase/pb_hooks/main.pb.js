@@ -243,6 +243,58 @@ routerAdd("POST", "/api/ai/read-receipt", (e) => {
   }
 }, $apis.requireAuth())
 
+
+/**
+ * Hook: Registrar envio do relatório para aprovação em approval_actions
+ *
+ * Quando um expense_report muda para status `submitted`, registra automaticamente
+ * uma ação `forward` no histórico de aprovação apontando para `submitted_to`.
+ */
+onRecordUpdateRequest((e) => {
+  const nextStatus = e.record.getString("status")
+
+  // Só registra quando o status final for submitted
+  if (nextStatus !== "submitted") {
+    return e.next()
+  }
+
+  const reportId = e.record.id
+  const previousReport = $app.findRecordById("expense_reports", reportId)
+  const previousStatus = previousReport.getString("status")
+
+  // Evita duplicação quando o relatório já está submetido e apenas outros campos mudam
+  if (previousStatus === "submitted") {
+    return e.next()
+  }
+
+  const response = e.next()
+
+  try {
+    const submittedTo = e.record.getString("submitted_to")
+    const companyId = e.record.getString("company")
+    const actorUserId = (e.auth && e.auth.id) ? e.auth.id : e.record.getString("user")
+
+    if (!submittedTo || !companyId || !actorUserId) {
+      throw new Error("Dados obrigatórios ausentes para registrar ação de envio")
+    }
+
+    const actionsCol = $app.findCollectionByNameOrId("approval_actions")
+    const actionRecord = new Record(actionsCol)
+    actionRecord.set("report", e.record.id)
+    actionRecord.set("company", companyId)
+    actionRecord.set("user", actorUserId)
+    actionRecord.set("action", "forward")
+    actionRecord.set("forwarded_to", submittedTo)
+    actionRecord.set("notes", "Relatório enviado para aprovação")
+    $app.save(actionRecord)
+  } catch (err) {
+    throw new BadRequestError("approval_actions", "Erro ao registrar envio para aprovação: " + String(err))
+  }
+
+  return response
+}, "expense_reports")
+
+
 /**
  * Hook: Validação de Approver ao Criar approval_actions
  *

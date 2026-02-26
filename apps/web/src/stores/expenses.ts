@@ -80,7 +80,7 @@ export const useExpensesStore = defineStore('expenses', () => {
       }
       const userId = pb.authStore.record?.id
       const records = await pb.collection('expense_reports').getFullList({
-        filter: `company="${companyId}" && status="submitted" && submitted_to="${userId}"`,
+        filter: `company="${companyId}" && submitted_to="${userId}" && (status="submitted" || status="approved")`,
         sort: '-submitted_at',
         expand: 'user',
       })

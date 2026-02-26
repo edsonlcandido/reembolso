@@ -291,6 +291,14 @@ async function run() {
   if (r7a.status !== 200) fail("Report submission", r7a.data)
   ok("Report status → submitted")
 
+  const r7b = await api(`/api/collections/approval_actions/records?filter=report="${reportId}"&&action="forward"&&user="${empId}"&&forwarded_to="${approverId}"`, {
+    headers: bearer(emp.token),
+  })
+  if (r7b.status !== 200 || (r7b.data.items || []).length === 0) {
+    fail("Submission audit action created", r7b.data)
+  }
+  ok("Submission audit action recorded (forward)")
+
   // ── 8. Approver returns report for revision ───────────────────────────────
   console.log("\n8. Approver returns report for revision...")
   const r8a = await api("/api/collections/approval_actions/records", {
@@ -350,6 +358,14 @@ async function run() {
   })
   if (r11.status !== 200) fail("Report resubmission", r11.data)
   ok("Report status → submitted (resubmitted)")
+
+  const r11b = await api(`/api/collections/approval_actions/records?filter=report="${reportId}"&&action="forward"&&user="${empId}"&&forwarded_to="${approverId}"`, {
+    headers: bearer(emp.token),
+  })
+  if (r11b.status !== 200 || (r11b.data.items || []).length < 2) {
+    fail("Resubmission audit action created", r11b.data)
+  }
+  ok("Resubmission audit action recorded (forward)")
 
   // ── 12. Create financial user and link to company ─────────────────────────
   console.log("\n12. Creating financial user...")
