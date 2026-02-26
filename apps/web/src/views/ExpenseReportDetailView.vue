@@ -93,13 +93,6 @@
                 Aprovar
               </button>
               <button
-                @click="showRejectModal = true"
-                :disabled="submitting"
-                class="rounded-lg bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700 transition-all disabled:opacity-50"
-              >
-                Rejeitar
-              </button>
-              <button
                 @click="showReturnModal = true"
                 :disabled="submitting"
                 class="rounded-lg border border-amber-400 px-5 py-2.5 text-sm font-semibold text-amber-700 hover:bg-amber-50 transition-all disabled:opacity-50"
@@ -125,11 +118,11 @@
             </template>
             <template v-if="report.status === 'approved' && isApprover">
               <button
-                @click="showRejectModal = true"
+                @click="showReturnModal = true"
                 :disabled="submitting"
-                class="rounded-lg bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700 transition-all disabled:opacity-50"
+                class="rounded-lg border border-amber-400 px-5 py-2.5 text-sm font-semibold text-amber-700 hover:bg-amber-50 transition-all disabled:opacity-50"
               >
-                Rejeitar
+                Devolver para Revisão
               </button>
               <button
                 @click="showForwardModal = true"
@@ -327,18 +320,7 @@
                   >
                     <EyeIcon class="h-4 w-4" />
                   </button>
-                  <template v-if="isApprover && ['approved', 'partially_paid', 'paid'].includes(report.status)">
-                    <label class="flex items-center gap-2 cursor-pointer select-none" :title="item.paid ? 'Clique para desmarcar como pago' : 'Clique para marcar como pago'">
-                      <input
-                        type="checkbox"
-                        :checked="item.paid"
-                        :disabled="submitting || expensesStore.loading || (!canCurrentUserPayReport && !item.paid)"
-                        @change="handleToggleItemPaid(item)"
-                        class="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 disabled:opacity-50"
-                      />
-                      <span class="text-xs text-gray-600 whitespace-nowrap">Pagar</span>
-                    </label>
-                  </template>
+                  
                   <button
                     v-if="report.status === 'draft'"
                     @click="openEditItemModal(item)"
@@ -778,7 +760,8 @@ function approvalActionLabel(action: string): string {
 }
 
 function approvalActionUserName(action: RecordModel): string {
-  return action.user || 'Usuário não identificado'
+  const expandedUser = action.expand?.user as RecordModel | undefined
+  return expandedUser?.name || expandedUser?.email || action.user || 'Usuário não identificado'
 }
 
 const reportWorkflowHistory = computed<ReportHistoryEntry[]>(() =>
@@ -1198,23 +1181,6 @@ async function handlePayReport() {
       await loadReport()
     } else {
       errorMsg.value = result.error || 'Erro ao pagar relatório.'
-    }
-  } finally {
-    submitting.value = false
-  }
-}
-
-async function handleToggleItemPaid(item: RecordModel) {
-  if (!report.value) return
-  successMsg.value = ''
-  errorMsg.value = ''
-  submitting.value = true
-  try {
-    const result = await expensesStore.markItemPaid(item.id, report.value.id, !item.paid)
-    if (result.success) {
-      await loadReport()
-    } else {
-      errorMsg.value = result.error || 'Erro ao atualizar pagamento do item.'
     }
   } finally {
     submitting.value = false
