@@ -1,44 +1,57 @@
-import { createApp } from 'vue'
 import { renderToString } from '@vue/server-renderer'
+import { createApp } from 'vue'
 import { readFileSync, writeFileSync } from 'fs'
 import { resolve } from 'path'
-import App from './src/App.vue'
+import { fileURLToPath } from 'url'
+
+// Importar App compilado pelo Vite após o build
+const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
 async function renderApp() {
   try {
+    // Importar App.vue compiled by Vite - use default export from main.js
+    const module = await import('./dist/js/main.js')
+    const App = module.default
+    
+    if (!App) {
+      console.warn('⚠ App component não encontrado. Usando HTML estático do Vite.')
+      return true
+    }
+    
+    // Renderizar App para HTML string
     const app = createApp(App)
-    const html = await renderToString(app)
+    const renderedHtml = await renderToString(app)
     
-    // Ler o index.html template
-    const templatePath = resolve(process.cwd(), 'index.html')
-    let indexHtml = readFileSync(templatePath, 'utf-8')
+    // Ler template HTML
+    const templatePath = resolve(__dirname, 'index.html')
+    let html = readFileSync(templatePath, 'utf-8')
     
-    // Substituir o div#app vazio pelo conteúdo renderizado
-    indexHtml = indexHtml.replace(
+    // Ler HTML compilado pelo Vite
+    const distPath = resolve(__dirname, 'dist/index.html')
+    let distHtml = readFileSync(distPath, 'utf-8')
+    
+    // Substituir conteúdo do app
+    distHtml = distHtml.replace(
       '<div id="app"></div>',
-      `<div id="app">${html}</div>`
+      `<div id="app">${renderedHtml}</div>`
     )
     
-    // Remover o script do módulo principal (não precisa mais carregar Vue)
-    // Manter o script de analytics ou outros scripts necessários
-    indexHtml = indexHtml.replace(
-      /<script[\s\S]*?type="module"[\s\S]*?src="\/src\/main\.ts"[\s\S]*?<\/script>/,
-      ''
-    )
+    // Remover scripts que carregam Vue (não necessário mais)
+    distHtml = distHtml.replace(/<script[^>]*type="module"[^>]*><\/script>/g, '')
     
-    // Escrever o HTML renderizado na pasta dist
-    const distPath = resolve(process.cwd(), 'dist/index.html')
-    writeFileSync(distPath, indexHtml, 'utf-8')
+    // Guardar HTML renderizado
+    writeFileSync(distPath, distHtml, 'utf-8')
     
     console.log('✓ HTML estático renderizado com sucesso')
     return true
   } catch (error) {
-    console.error('✗ Erro ao renderizar HTML:', error)
-    return false
+    console.warn('⚠ SSR renderization falhou, mantendo output estático:', error.message)
+    // Não falhar o build, apenas continuar com HTML estático do Vite
+    return true
   }
 }
 
-// Executar renderização
 renderApp().then(success => {
   process.exit(success ? 0 : 1)
 })
+
