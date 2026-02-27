@@ -28,7 +28,7 @@
       </div>
 
       <!-- Stats grid -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <!-- Total Relatórios -->
         <div class="bg-white rounded-2xl shadow-xl p-4 border-2 border-transparent">
           <div class="flex items-center gap-3">
