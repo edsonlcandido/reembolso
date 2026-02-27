@@ -10,7 +10,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
               </svg>
             </div>
-            <span class="text-lg font-bold text-white">ReembolsoIA</span>
+            <span class="text-lg font-bold text-white">Reembolsa<span class="text-primary-600">AI</span></span>
           </div>
           <p class="text-sm">Sistema inteligente de reembolso de despesas corporativas com OCR via IA.</p>
         </div>
@@ -51,7 +51,7 @@
 
       <!-- Copyright -->
       <div class="border-t border-gray-800 mt-10 pt-8 text-center text-sm">
-        <p>&copy; 2026 ReembolsoIA. Todos os direitos reservados.</p>
+        <p>&copy; 2026 Reembolsa AI. Todos os direitos reservados.</p>
       </div>
     </div>
   </footer>
