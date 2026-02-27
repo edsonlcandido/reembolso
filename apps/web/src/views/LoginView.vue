@@ -170,16 +170,16 @@
             </div>
             <div class="relative flex justify-center text-sm">
               <span class="px-4 bg-white text-gray-600 font-medium">
-                {{ mode === 'register' ? 'Ja tem uma conta?' : mode === 'forgot' ? 'Lembrou a senha?' : 'Nao tem uma conta?' }}
+                {{ toggleQuestionText }}
               </span>
             </div>
           </div>
 
           <div class="mt-6">
             <button type="button"
-              @click="mode === 'register' ? setMode('login') : mode === 'forgot' ? setMode('login') : setMode('register')"
+              @click="handleToggleMode"
               class="w-full flex justify-center items-center py-3 px-4 border-2 border-gray-300 rounded-xl shadow-sm text-base font-semibold text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all transform hover:scale-[1.02]">
-              {{ mode === 'register' ? 'Fazer Login' : mode === 'forgot' ? 'Voltar ao Login' : 'Criar Nova Conta' }}
+              {{ toggleActionText }}
             </button>
           </div>
         </div>
@@ -222,11 +222,32 @@ const currentSubtitle = computed(() => {
   return 'Entre com suas credenciais para continuar'
 })
 
+const toggleQuestionText = computed(() => {
+  if (mode.value === 'register') return 'Ja tem uma conta?'
+  if (mode.value === 'forgot') return 'Lembrou a senha?'
+  return 'Nao tem uma conta?'
+})
+
+const toggleActionText = computed(() => {
+  if (mode.value === 'register') return 'Fazer Login'
+  if (mode.value === 'forgot') return 'Voltar ao Login'
+  return 'Criar Nova Conta'
+})
+
 function setMode(newMode: Mode) {
   mode.value = newMode
   error.value = ''
   successMessage.value = ''
   formData.value = { name: '', email: '', password: '', passwordConfirm: '', emailVisibility: true }
+}
+
+function handleToggleMode() {
+  if (mode.value === 'register' || mode.value === 'forgot') {
+    setMode('login')
+    return
+  }
+
+  setMode('register')
 }
 
 function validateForm(): string | null {
