@@ -41,10 +41,10 @@
         <div>
           <h4 class="text-white font-semibold mb-4">Legal</h4>
           <ul class="space-y-2 text-sm">
-            <li><a href="#" class="hover:text-white transition-colors">Termos de Uso</a></li>
-            <li><a href="#" class="hover:text-white transition-colors">Privacidade</a></li>
-            <li><a href="#" class="hover:text-white transition-colors">LGPD</a></li>
-            <li><a href="#" class="hover:text-white transition-colors">Cookies</a></li>
+            <li><a href="/termos-de-uso.html" class="hover:text-white transition-colors">Termos de Uso</a></li>
+            <li><a href="/politica-de-privacidade.html" class="hover:text-white transition-colors">Privacidade</a></li>
+            <li><a href="/lgpd.html" class="hover:text-white transition-colors">LGPD</a></li>
+            <li><a href="/politica-de-cookies.html" class="hover:text-white transition-colors">Cookies</a></li>
           </ul>
         </div>
       </div>
