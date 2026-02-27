@@ -1,6 +1,6 @@
 <template>
   <div :class="[
-    'bg-white rounded-2xl p-8 border shadow-sm',
+    'relative bg-white rounded-2xl p-8 border shadow-sm flex flex-col',
     featured ? 'border-2 border-primary-600 shadow-xl' : 'border-gray-200'
   ]">
     <!-- Featured Badge -->
@@ -19,7 +19,7 @@
     </div>
 
     <!-- Features -->
-    <ul class="space-y-3 mb-8">
+    <ul class="space-y-3 mb-8 flex-grow">
       <li v-for="(feature, idx) in plan.features" :key="idx" class="flex items-center text-sm text-gray-600">
         <svg class="w-4 h-4 mr-2 text-secondary-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
@@ -32,7 +32,7 @@
     <a
       :href="plan.name === 'Empresarial' ? '#' : '/app/'"
       :class="[
-        'block w-full text-center px-6 py-3 font-semibold rounded-xl transition-all',
+        'block w-full text-center px-6 py-3 font-semibold rounded-xl transition-all mt-auto',
         featured
           ? 'bg-primary-600 text-white hover:bg-primary-700 shadow-lg'
           : 'border-2 border-gray-200 text-gray-700 hover:border-primary-300 hover:text-primary-600'

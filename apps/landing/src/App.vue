@@ -6,7 +6,7 @@
     <Stats />
     <Features />
     <HowItWorks />
-    <Testimonials />
+    <!--<Testimonials /> -->
     <Pricing />
     <FAQ />
     <CTAFinal />
