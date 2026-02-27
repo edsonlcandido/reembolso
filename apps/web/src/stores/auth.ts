@@ -93,6 +93,7 @@ export const useAuthStore = defineStore('auth', () => {
         password,
         passwordConfirm,
         name: name || email.split('@')[0],
+        emailVisibility: true,
       }
 
       await pb.collection('users').create(data)

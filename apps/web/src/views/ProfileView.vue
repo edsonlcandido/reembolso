@@ -181,9 +181,12 @@ async function handleChangePassword() {
       successMessage.value = 'Senha alterada com sucesso! Faça login novamente.'
       passwordForm.value = { oldPassword: '', newPassword: '', newPasswordConfirm: '' }
       setTimeout(() => {
-        companyStore.clearState()
+        const companyLogoutUrl = companyStore.currentCompany?.slug
+          ? `/companies/${companyStore.currentCompany.slug}`
+          : '/login'
+
         authStore.logout()
-        router.push('/login')
+        router.push(companyLogoutUrl)
       }, 2000)
     } else {
       errorMessage.value = result.error || 'Erro ao alterar senha.'
