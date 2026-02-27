@@ -3,7 +3,7 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="text-center mb-16">
         <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">O que nossos clientes dizem</h2>
-        <p class="text-lg text-gray-600">Empresas que ja transformaram seu processo de reembolso.</p>
+        <p class="text-lg text-gray-600">Empresas que já transformaram seu processo de reembolso.</p>
       </div>
       <div class="grid md:grid-cols-3 gap-8">
         <TestimonialCard v-for="testimonial in testimonials" :key="testimonial.id" :testimonial="testimonial" />
@@ -38,7 +38,7 @@ const testimonials: Testimonial[] = [
   {
     id: 2,
     rating: 5,
-    quote: 'A precisao do OCR e impressionante. Antes, gastávamos horas digitando dados de cupons. Agora e tudo automatico.',
+    quote: 'A precisão do OCR é impressionante. Antes, gastávamos horas digitando dados de cupons. Agora é tudo automático.',
     author: 'Joao Mendes',
     role: 'Controller, Grupo Innovare',
     initials: 'JM',

@@ -19,7 +19,7 @@
 
         <!-- Solutions -->
         <div>
-          <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-6">Nossa <span class="text-primary-600">solucao</span></h2>
+          <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-6">Nossa <span class="text-primary-600">solução</span></h2>
           <div class="space-y-4">
             <div v-for="(solution, idx) in solutions" :key="idx" class="flex items-start space-x-3">
               <div class="w-6 h-6 bg-secondary-500/10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -38,16 +38,16 @@
 
 <script setup lang="ts">
 const problems = [
-  'Preenchimento manual de formularios e tedioso e sujeito a erros',
+  'Preenchimento manual de formulários tediosos e sujeito a erros',
   'Cupons fiscais se perdem ou ficam ilegíveis com o tempo',
-  'Processo de aprovacao lento e descentralizado',
+  'Processo de aprovação lento e descentralizado',
   'Falta de rastreabilidade e auditoria das despesas',
 ]
 
 const solutions = [
   'IA extrai dados do cupom automaticamente em segundos',
-  'Fotos digitais ficam armazenadas com seguranca para sempre',
-  'Dashboard centralizado para aprovacao em poucos cliques',
+  'Fotos digitais ficam armazenadas com segurança para sempre',
+  'Dashboard centralizado para aprovação em poucos cliques',
   'Trilha de auditoria completa e compliance garantido',
 ]
 </script>

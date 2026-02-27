@@ -13,9 +13,9 @@
 
 <script setup lang="ts">
 const stats = [
-  { value: '80%', label: 'mais rapido que o processo manual' },
-  { value: '95%', label: 'de precisao no OCR' },
+  { value: '80%', label: 'mais rápido que o processo manual' },
+  { value: '95%', label: 'de precisão no OCR' },
   { value: '<10s', label: 'para processar cada cupom' },
-  { value: '60%', label: 'de reducao em custos operacionais' },
+  { value: '60%', label: 'de redução em custos operacionais' },
 ]
 </script>
