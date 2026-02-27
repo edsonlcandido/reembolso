@@ -170,8 +170,7 @@
             </div>
             <div class="relative flex justify-center text-sm">
               <span class="px-4 bg-white text-gray-600 font-medium">
-                {{ mode === 'register' ? 'Ja tem uma conta?' : mode === 'forgot' ? 'Lembrou a senha?' : 'Nao tem uma
-                conta?' }}
+                {{ mode === 'register' ? 'Ja tem uma conta?' : mode === 'forgot' ? 'Lembrou a senha?' : 'Nao tem uma conta?' }}
               </span>
             </div>
           </div>
