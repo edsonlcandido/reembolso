@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import { resolve } from 'path'
 
+import vue from '@vitejs/plugin-vue'
 // Gerar timestamp de build no formato YYYYMMDD-HHMMSS
 const now = new Date()
 const buildVersion = [
@@ -28,7 +29,7 @@ function versionQueryPlugin() {
 }
 
 export default defineConfig({
-  plugins: [versionQueryPlugin()],
+  plugins: [vue(), versionQueryPlugin()],
   build: {
     rollupOptions: {
       input: {
