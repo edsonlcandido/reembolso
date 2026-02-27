@@ -8,11 +8,8 @@
  */
 migrate((app) => {
   const col = app.findCollectionByNameOrId("expense_reports")
-  const field = col.fields.getByName("rejection_reason")
-  if (field) {
-    col.fields.remove(field)
-    app.save(col)
-  }
+  col.fields.removeByName("rejection_reason")
+  app.save(col)
 }, (app) => {
   const col = app.findCollectionByNameOrId("expense_reports")
   col.fields.add(new Field({ name: "rejection_reason", type: "text", required: false, max: 2000 }))
