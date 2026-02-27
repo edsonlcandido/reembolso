@@ -2,6 +2,9 @@ import { defineConfig } from 'vite'
 import { resolve } from 'path'
 
 import vue from '@vitejs/plugin-vue'
+import { seoPlugin } from './vite-plugin-seo'
+import { staticHtmlPlugin } from './vite-plugin-static-html'
+
 // Gerar timestamp de build no formato YYYYMMDD-HHMMSS
 const now = new Date()
 const buildVersion = [
@@ -29,7 +32,7 @@ function versionQueryPlugin() {
 }
 
 export default defineConfig({
-  plugins: [vue(), versionQueryPlugin()],
+  plugins: [vue(), versionQueryPlugin(), seoPlugin(), staticHtmlPlugin()],
   build: {
     rollupOptions: {
       input: {
