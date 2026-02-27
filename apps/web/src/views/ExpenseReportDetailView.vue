@@ -56,9 +56,9 @@
             </div>
           </div>
 
-          <div v-if="report.rejection_reason && (report.status === 'rejected' || report.status === 'draft')" class="mb-6 rounded-lg bg-amber-50 border border-amber-200 p-4">
+          <div v-if="lastActionNotes && (report.status === 'rejected' || report.status === 'draft')" class="mb-6 rounded-lg bg-amber-50 border border-amber-200 p-4">
             <h3 class="text-sm font-semibold text-amber-700 mb-1">{{ report.status === 'draft' ? 'Devolvido para Revisão' : 'Motivo da Rejeição' }}</h3>
-            <p class="text-sm text-amber-700">{{ report.rejection_reason }}</p>
+            <p class="text-sm text-amber-700">{{ lastActionNotes }}</p>
           </div>
 
           <div class="flex flex-wrap gap-3">
@@ -785,6 +785,11 @@ const reportWorkflowHistoryDescending = computed<ReportHistoryEntry[]>(() =>
   )
 )
 
+const lastActionNotes = computed(() => {
+  const action = approvalActions.value.find(a => a.notes)
+  return action?.notes || ''
+})
+
 function formatCurrency(cents: number): string {
   return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
@@ -1149,7 +1154,7 @@ async function handleReopenReport() {
   errorMsg.value = ''
   submitting.value = true
   try {
-    const result = await expensesStore.returnForRevision(report.value.id, report.value.rejection_reason || '')
+    const result = await expensesStore.returnForRevision(report.value.id)
     if (result.success) {
       successMsg.value = 'Relatório reaberto como rascunho. Você já pode editá-lo.'
       await loadReport()

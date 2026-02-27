@@ -170,7 +170,6 @@ export const useExpensesStore = defineStore('expenses', () => {
     try {
       const record = await pb.collection('expense_reports').update(id, {
         status: 'rejected',
-        rejection_reason: reason,
         approved_by: pb.authStore.record?.id,
         approved_at: new Date().toISOString(),
       })
@@ -194,12 +193,11 @@ export const useExpensesStore = defineStore('expenses', () => {
     }
   }
 
-  async function returnForRevision(id: string, reason: string) {
+  async function returnForRevision(id: string, reason: string = '') {
     loading.value = true
     try {
       const record = await pb.collection('expense_reports').update(id, {
         status: 'draft',
-        rejection_reason: reason,
         submitted_at: null,
         submitted_to: null,
         approved_by: null,
