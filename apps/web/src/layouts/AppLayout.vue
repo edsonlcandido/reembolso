@@ -131,8 +131,11 @@ function isActive(path: string): boolean {
 }
 
 function handleLogout() {
-  companyStore.clearState()
+  const companyLogoutUrl = companyStore.currentCompany?.slug
+    ? `/companies/${companyStore.currentCompany.slug}`
+    : '/login'
+
   authStore.logout()
-  router.push('/login')
+  router.push(companyLogoutUrl)
 }
 </script>
