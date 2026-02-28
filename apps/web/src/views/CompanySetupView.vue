@@ -115,13 +115,85 @@
         </div>
       </form>
     </div>
+
+    <!-- Billing section: visible only for admins in edit mode -->
+    <div v-if="isEditing && isAdmin" class="mt-6 bg-white rounded-2xl shadow-xl overflow-hidden">
+      <div class="bg-gradient-to-r from-gray-50 to-gray-100 px-8 py-5 border-b border-gray-200 flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-bold text-gray-900">Cobrança</h2>
+          <p class="text-sm text-gray-500 mt-0.5">Plano e uso da empresa</p>
+        </div>
+        <span v-if="isFreePlan" class="px-3 py-1 rounded-full bg-gray-200 text-gray-600 text-xs font-semibold">Plano Gratuito</span>
+        <span v-else class="px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-semibold">Plano PRO</span>
+      </div>
+
+      <div v-if="billingLoading" class="px-8 py-8 text-center text-gray-400 text-sm">Carregando...</div>
+
+      <template v-else>
+        <!-- FREE plan usage -->
+        <div v-if="isFreePlan" class="px-8 py-6 border-b border-gray-100">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <p class="text-sm font-semibold text-gray-700">Uso do Ciclo Atual</p>
+              <p class="text-xs text-gray-500 mt-0.5">Relatórios criados neste mês de cobrança</p>
+            </div>
+            <span class="text-lg font-bold text-gray-900">{{ cycleReportsCount }}<span class="text-sm font-normal text-gray-500">/{{ FREE_PLAN_LIMIT }}</span></span>
+          </div>
+          <div class="h-3 w-full rounded-full bg-gray-100 overflow-hidden">
+            <div
+              :class="cycleUsageColor"
+              class="h-3 rounded-full transition-all duration-500"
+              :style="{ width: cycleUsagePercent + '%' }"
+            ></div>
+          </div>
+          <p class="mt-2 text-xs text-gray-500">
+            {{ FREE_PLAN_LIMIT - cycleReportsCount > 0 ? `${FREE_PLAN_LIMIT - cycleReportsCount} relatório(s) restante(s)` : 'Limite atingido' }}
+            ·
+            <a
+              href="mailto:contato@reembolsa-ai.ehtudo.app?subject=Upgrade%20para%20Plano%20PRO"
+              class="text-blue-600 hover:underline"
+            >Fazer upgrade para PRO — R$10/usuário/mês</a>
+          </p>
+        </div>
+
+        <!-- Members list -->
+        <div class="px-8 py-6">
+          <h3 class="text-sm font-semibold text-gray-700 mb-4">
+            Membros
+            <span class="ml-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 text-xs font-normal">{{ companyStore.members.length }}</span>
+          </h3>
+          <div v-if="companyStore.members.length === 0" class="text-sm text-gray-400">Nenhum membro encontrado.</div>
+          <ul v-else class="divide-y divide-gray-100">
+            <li
+              v-for="member in companyStore.members"
+              :key="member.id"
+              class="flex items-center justify-between py-3"
+            >
+              <div class="min-w-0">
+                <p class="text-sm font-medium text-gray-900 truncate">{{ member.expand?.user?.name || member.expand?.user?.email || '—' }}</p>
+                <p class="text-xs text-gray-500 truncate">{{ member.expand?.user?.email || '' }}</p>
+              </div>
+              <span
+                :class="{
+                  'bg-purple-100 text-purple-700': member.role === 'admin',
+                  'bg-blue-100 text-blue-700': member.role === 'approver',
+                  'bg-gray-100 text-gray-600': member.role === 'employee' || !member.role,
+                }"
+                class="ml-4 flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold capitalize"
+              >{{ member.role || 'employee' }}</span>
+            </li>
+          </ul>
+        </div>
+      </template>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { useCompanyStore } from '../stores/company'
 import { useRouter, useRoute } from 'vue-router'
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import pb from '../services/pocketbase'
 
 const router = useRouter()
 const route = useRoute()
@@ -134,6 +206,26 @@ const errorMsg = ref('')
 const emailError = ref('')
 const slugError = ref('')
 const slugManuallyEdited = ref(false)
+const billingLoading = ref(false)
+const cycleReportsCount = ref(0)
+const FREE_PLAN_LIMIT = 5
+
+const isAdmin = computed(() => companyStore.currentUserRole === 'admin')
+
+const isFreePlan = computed(() => {
+  const plan = companyStore.currentCompany?.plan
+  return !plan || plan === 'FREE'
+})
+
+const cycleUsagePercent = computed(() =>
+  Math.min(100, Math.round((cycleReportsCount.value / FREE_PLAN_LIMIT) * 100))
+)
+
+const cycleUsageColor = computed(() => {
+  if (cycleUsagePercent.value >= 100) return 'bg-red-500'
+  if (cycleUsagePercent.value >= 80) return 'bg-amber-500'
+  return 'bg-blue-500'
+})
 
 const form = ref({
   name: '',
@@ -256,6 +348,39 @@ onMounted(async () => {
       form.value.email = company.email || ''
       form.value.phone = company.phone || ''
       form.value.address = company.address || ''
+
+      // Load billing data for admins
+      if (companyStore.currentUserRole === 'admin') {
+        companyStore.setCurrentCompany(company)
+        billingLoading.value = true
+        try {
+          await companyStore.fetchMembers()
+
+          // Compute current billing cycle usage
+          const anchorDay = company.billing_anchor_day || 1
+          const now = new Date()
+          const currentDay = now.getUTCDate()
+          const currentMonth = now.getUTCMonth()
+          const currentYear = now.getUTCFullYear()
+          let cycleStart: Date
+          if (currentDay >= anchorDay) {
+            cycleStart = new Date(Date.UTC(currentYear, currentMonth, anchorDay))
+          } else {
+            cycleStart = new Date(Date.UTC(currentYear, currentMonth - 1, anchorDay))
+          }
+          const cycleStartStr = cycleStart.toISOString().slice(0, 10)
+          try {
+            const cycleResult = await pb.collection('expense_reports').getList(1, 1, {
+              filter: `company="${company.id}" && created >= "${cycleStartStr}"`,
+            })
+            cycleReportsCount.value = cycleResult.totalItems
+          } catch (_) {
+            cycleReportsCount.value = 0
+          }
+        } finally {
+          billingLoading.value = false
+        }
+      }
     }
   }
 })
