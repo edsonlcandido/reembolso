@@ -115,7 +115,7 @@ router.beforeEach(async (to, _from, next) => {
 
   if (to.meta.requiresAuth && isAuthenticated) {
     try {
-      await pb.collection('users').authRefresh()
+      await pb.collection('users').authRefresh({ requestKey: null })
     } catch (error) {
       pb.authStore.clear()
       isAuthenticated = false
