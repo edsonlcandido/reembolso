@@ -109,9 +109,9 @@
       </div>
     </div>
 
-    <!-- FREE plan usage banner -->
+    <!-- FREE plan usage banner (admin-only) -->
     <div
-      v-if="!loading && companyStore.currentCompany && isFreePlan"
+      v-if="!loading && companyStore.currentCompany && isFreePlan && isAdmin"
       class="mb-8"
     >
       <!-- At-limit alert -->
