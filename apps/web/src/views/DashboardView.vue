@@ -109,6 +109,74 @@
       </div>
     </div>
 
+    <!-- FREE plan usage banner -->
+    <div
+      v-if="!loading && companyStore.currentCompany && isFreePlan"
+      class="mb-8"
+    >
+      <!-- At-limit alert -->
+      <div
+        v-if="cycleUsagePercent >= 100"
+        class="mb-4 flex items-start gap-4 rounded-xl border border-red-200 bg-red-50 p-5 shadow"
+      >
+        <ExclamationTriangleIcon class="h-6 w-6 flex-shrink-0 text-red-500 mt-0.5" />
+        <div class="flex-1">
+          <p class="font-semibold text-red-800">Limite de relatórios atingido</p>
+          <p class="text-sm text-red-700 mt-0.5">Você atingiu o limite de {{ FREE_PLAN_LIMIT }} relatórios do plano gratuito neste ciclo. Faça upgrade para criar mais.</p>
+          <a
+            href="mailto:contato@reembolsa-ai.ehtudo.app?subject=Upgrade%20para%20Plano%20PRO"
+            class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600 transition-colors"
+          >
+            Fazer Upgrade para PRO
+          </a>
+        </div>
+      </div>
+
+      <!-- Near-limit warning (80%+) -->
+      <div
+        v-else-if="cycleUsagePercent >= 80"
+        class="mb-4 flex items-start gap-4 rounded-xl border border-amber-200 bg-amber-50 p-5 shadow"
+      >
+        <ExclamationTriangleIcon class="h-6 w-6 flex-shrink-0 text-amber-500 mt-0.5" />
+        <div class="flex-1">
+          <p class="font-semibold text-amber-800">Você está próximo do limite</p>
+          <p class="text-sm text-amber-700 mt-0.5">{{ cycleReportsCount }}/{{ FREE_PLAN_LIMIT }} relatórios usados neste ciclo. Considere fazer upgrade para o plano PRO.</p>
+          <a
+            href="mailto:contato@reembolsa-ai.ehtudo.app?subject=Upgrade%20para%20Plano%20PRO"
+            class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600 transition-colors"
+          >
+            Conhecer Plano PRO — R$10/usuário/mês
+          </a>
+        </div>
+      </div>
+
+      <!-- Usage progress bar -->
+      <div class="rounded-2xl border border-gray-100 bg-white px-6 py-5 shadow-xl">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <p class="text-sm font-semibold text-gray-700">Uso do Plano Gratuito — Ciclo Atual</p>
+            <p class="text-xs text-gray-500 mt-0.5">Relatórios criados neste mês de cobrança</p>
+          </div>
+          <span class="text-lg font-bold text-gray-900">{{ cycleReportsCount }}<span class="text-sm font-normal text-gray-500">/{{ FREE_PLAN_LIMIT }}</span></span>
+        </div>
+        <div class="h-3 w-full rounded-full bg-gray-100 overflow-hidden">
+          <div
+            :class="cycleUsageColor"
+            class="h-3 rounded-full transition-all duration-500"
+            :style="{ width: cycleUsagePercent + '%' }"
+          ></div>
+        </div>
+        <p class="mt-2 text-xs text-gray-500">
+          {{ FREE_PLAN_LIMIT - cycleReportsCount > 0 ? `${FREE_PLAN_LIMIT - cycleReportsCount} relatório(s) restante(s)` : 'Limite atingido' }}
+          · Plano Gratuito ·
+          <a
+            href="mailto:contato@reembolsa-ai.ehtudo.app?subject=Upgrade%20para%20Plano%20PRO"
+            class="text-blue-600 hover:underline"
+          >Fazer upgrade</a>
+        </p>
+      </div>
+    </div>
+
     <div v-if="companyStore.currentCompany" class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
       <div class="lg:col-span-2">
         <div class="bg-white shadow-xl rounded-2xl border border-gray-100">
@@ -236,6 +304,8 @@ const companyStore = useCompanyStore()
 
 const loading = ref(true)
 const recentReports = ref<any[]>([])
+const cycleReportsCount = ref(0)
+const FREE_PLAN_LIMIT = 5
 const stats = ref({
   totalReports: 0,
   totalAmount: 0,
@@ -248,6 +318,21 @@ const userName = computed(() => {
 })
 
 const isAdmin = computed(() => companyStore.currentUserRole === 'admin')
+
+const isFreePlan = computed(() => {
+  const plan = companyStore.currentCompany?.plan
+  return !plan || plan === 'FREE'
+})
+
+const cycleUsagePercent = computed(() =>
+  Math.min(100, Math.round((cycleReportsCount.value / FREE_PLAN_LIMIT) * 100))
+)
+
+const cycleUsageColor = computed(() => {
+  if (cycleUsagePercent.value >= 100) return 'bg-red-500'
+  if (cycleUsagePercent.value >= 80) return 'bg-amber-500'
+  return 'bg-blue-500'
+})
 
 function formatCurrency(cents: number): string {
   return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -305,6 +390,33 @@ async function loadDashboard() {
       stats.value.totalAmount = allReports.items.reduce((sum: number, r: any) => sum + (r.total_amount || 0), 0)
       stats.value.pendingReports = allReports.items.filter((r: any) => r.status === 'submitted').length
       stats.value.approvedReports = allReports.items.filter((r: any) => r.status === 'approved').length
+
+      // Fetch current billing cycle report count for FREE plan display
+      if (!companyStore.currentCompany.plan || companyStore.currentCompany.plan === 'FREE') {
+        const anchorDay = companyStore.currentCompany.billing_anchor_day || 1
+        const now = new Date()
+        const currentDay = now.getUTCDate()
+        const currentMonth = now.getUTCMonth()
+        const currentYear = now.getUTCFullYear()
+
+        let cycleStart: Date
+        if (currentDay >= anchorDay) {
+          cycleStart = new Date(Date.UTC(currentYear, currentMonth, anchorDay))
+        } else {
+          cycleStart = new Date(Date.UTC(currentYear, currentMonth - 1, anchorDay))
+        }
+
+        const cycleStartStr = cycleStart.toISOString().slice(0, 10)
+
+        try {
+          const cycleResult = await pb.collection('expense_reports').getList(1, 1, {
+            filter: `company="${companyId}" && created >= "${cycleStartStr}"`,
+          })
+          cycleReportsCount.value = cycleResult.totalItems
+        } catch (_) {
+          cycleReportsCount.value = 0
+        }
+      }
     }
   } catch (error) {
     console.error('Dashboard load error:', error)

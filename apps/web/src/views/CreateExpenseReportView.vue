@@ -6,7 +6,33 @@
         <p class="text-blue-100 mt-1">Preencha os dados para criar um novo relatório</p>
       </div>
 
-      <div v-if="errorMsg" class="mx-8 mt-6 rounded-lg bg-red-50 border border-red-200 p-4">
+      <div v-if="isPlanLimitError" class="mx-8 mt-6 rounded-lg bg-amber-50 border border-amber-300 p-5">
+        <div class="flex items-start gap-3">
+          <svg class="h-6 w-6 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+          </svg>
+          <div>
+            <h3 class="font-semibold text-amber-800">Limite do Plano Gratuito Atingido</h3>
+            <p class="text-sm text-amber-700 mt-1">{{ errorMsg }}</p>
+            <div class="mt-3 flex flex-wrap gap-3">
+              <a
+                href="mailto:contato@reembolsa-ai.ehtudo.app?subject=Upgrade%20para%20Plano%20PRO"
+                class="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600 transition-colors"
+              >
+                Fazer Upgrade para PRO — R$10/usuário/mês
+              </a>
+              <router-link
+                to="/reports"
+                class="inline-flex items-center gap-1.5 rounded-lg border border-amber-400 px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100 transition-colors"
+              >
+                Ver meus relatórios
+              </router-link>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div v-else-if="errorMsg" class="mx-8 mt-6 rounded-lg bg-red-50 border border-red-200 p-4">
         <p class="text-sm text-red-700">{{ errorMsg }}</p>
       </div>
 
@@ -110,6 +136,7 @@ const expensesStore = useExpensesStore()
 const companyStore = useCompanyStore()
 
 const errorMsg = ref('')
+const isPlanLimitError = ref(false)
 
 // Função para obter data de hoje no formato YYYY-MM-DD
 function getTodayDate(): string {
@@ -136,6 +163,7 @@ onMounted(() => {
 
 async function handleSubmit() {
   errorMsg.value = ''
+  isPlanLimitError.value = false
 
   if (!form.value.title.trim()) {
     errorMsg.value = 'O título é obrigatório.'
@@ -162,6 +190,7 @@ async function handleSubmit() {
   if (result.success && result.data) {
     router.push(`/reports/${result.data.id}`)
   } else {
+    isPlanLimitError.value = result.isPlanLimitError ?? false
     errorMsg.value = result.error || 'Erro ao criar relatório.'
   }
 }

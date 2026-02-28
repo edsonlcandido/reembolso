@@ -103,7 +103,9 @@ export const useExpensesStore = defineStore('expenses', () => {
       })
       return { success: true, data: record }
     } catch (error: any) {
-      return { success: false, error: error?.message || 'Erro ao criar relatório.' }
+      const isPlanLimitError = !!(error?.data?.plan_limit)
+      const planLimitMsg = error?.data?.plan_limit?.message
+      return { success: false, error: planLimitMsg || error?.message || 'Erro ao criar relatório.', isPlanLimitError }
     } finally {
       loading.value = false
     }

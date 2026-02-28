@@ -91,6 +91,7 @@ routerAdd("POST", "/api/companies/create", (e) => {
     membership.set("user", e.auth.id)
     membership.set("role", "admin")
     membership.set("active", true)
+    membership.set("activated_at", new Date().toISOString())
     $app.save(membership)
   } catch (err) {
     // Roll back the company creation so the user is not left with an
@@ -387,6 +388,233 @@ onRecordCreateRequest((e) => {
 }, "approval_actions")
 
 
+/**
+ * Hook: FREE plan — enforce 5-reports-per-cycle limit on expense_reports creation
+ *
+ * Runs before the record is persisted. Calculates the current billing cycle
+ * based on the company's billing_anchor_day and counts existing reports.
+ * Companies without a plan set are treated as FREE.
+ */
+onRecordCreateRequest((e) => {
+  const companyId = e.record.getString("company")
+  if (!companyId) return e.next()
+
+  let company
+  try {
+    company = $app.findRecordById("companies", companyId)
+  } catch (_) {
+    return e.next()
+  }
+
+  const plan = company.getString("plan") || "FREE"
+  if (plan !== "FREE") return e.next()
+
+  // Determine the current billing cycle boundaries (UTC-based)
+  const anchorDay = company.getInt("billing_anchor_day") || 1
+  const now = new Date()
+  const currentDay = now.getUTCDate()
+  const currentMonth = now.getUTCMonth() // 0-indexed
+  const currentYear = now.getUTCFullYear()
+
+  let cycleStart
+  if (currentDay >= anchorDay) {
+    cycleStart = new Date(Date.UTC(currentYear, currentMonth, anchorDay))
+  } else {
+    cycleStart = new Date(Date.UTC(currentYear, currentMonth - 1, anchorDay))
+  }
+
+  const cycleStartStr = cycleStart.toISOString().slice(0, 10)
+
+  // Count valid reports created in the current cycle (all statuses count —
+  // deleted records are physically removed so they no longer appear here)
+  const FREE_LIMIT = 5
+  let count = 0
+  try {
+    const reports = $app.findRecordsByFilter(
+      "expense_reports",
+      `company = "${companyId}" && created >= "${cycleStartStr}"`,
+      "",
+      FREE_LIMIT + 1,
+      0
+    )
+    count = reports ? reports.length : 0
+  } catch (_) {
+    return e.next()
+  }
+
+  if (count >= FREE_LIMIT) {
+    // BadRequestError(field, message): the 'plan_limit' field key lets the
+    // frontend detect this specific error via error.data.plan_limit.
+    throw new BadRequestError(
+      "plan_limit",
+      `Limite do plano gratuito atingido: ${count}/${FREE_LIMIT} relatórios criados neste ciclo. Faça upgrade para o plano PRO para criar relatórios ilimitados.`
+    )
+  }
+
+  return e.next()
+}, "expense_reports")
 
 
+/**
+ * Hook: company_users — set activated_at on creation when active=true
+ */
+onRecordCreateRequest((e) => {
+  if (e.record.getBool("active") && !e.record.getString("activated_at")) {
+    e.record.set("activated_at", new Date().toISOString())
+  }
+  return e.next()
+}, "company_users")
+
+
+/**
+ * Hook: company_users — maintain activated_at / deactivated_at on update
+ */
+onRecordUpdateRequest((e) => {
+  const newActive = e.record.getBool("active")
+
+  let prevActive = false
+  try {
+    const prev = $app.findRecordById("company_users", e.record.id)
+    prevActive = prev.getBool("active")
+  } catch (_) {}
+
+  if (newActive && !prevActive && !e.record.getString("activated_at")) {
+    e.record.set("activated_at", new Date().toISOString())
+  }
+
+  if (!newActive && prevActive) {
+    e.record.set("deactivated_at", new Date().toISOString())
+  }
+
+  return e.next()
+}, "company_users")
+
+
+/**
+ * Endpoint: Close billing cycle for PRO companies
+ *
+ * Finds all PRO companies whose billing_anchor_day matches today (UTC) and
+ * generates an invoice for the completed cycle. Idempotent — skips companies
+ * that already have an invoice for the cycle.
+ *
+ * POST /api/billing/close-cycle
+ * Requires superuser authentication.
+ */
+routerAdd("POST", "/api/billing/close-cycle", (e) => {
+  const MS_PER_DAY = 86400000
+  const PRO_PLAN_MONTHLY_PRICE_CENTS = 1000 // R$10.00 per user per month
+
+  const now = new Date()
+  const today = now.getUTCDate()
+
+  let proCompanies
+  try {
+    proCompanies = $app.findRecordsByFilter(
+      "companies",
+      `plan = "PRO" && billing_anchor_day = ${today}`,
+      "",
+      100,
+      0
+    )
+  } catch (_) {
+    proCompanies = []
+  }
+
+  if (!proCompanies || proCompanies.length === 0) {
+    return e.json(200, { processed: 0, message: "Nenhuma empresa PRO com ciclo encerrando hoje" })
+  }
+
+  const results = []
+
+  for (const company of proCompanies) {
+    try {
+      const companyId = company.id
+      const anchorDay = company.getInt("billing_anchor_day") || 1
+
+      // Cycle that ends today: started last month on anchor_day
+      const cycleEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), anchorDay))
+      const cycleStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, anchorDay))
+
+      const cycleStartStr = cycleStart.toISOString().slice(0, 10)
+      const cycleEndStr = cycleEnd.toISOString().slice(0, 10)
+
+      // Idempotency check
+      try {
+        const existing = $app.findRecordsByFilter(
+          "invoices",
+          `company = "${companyId}" && cycle_start = "${cycleStartStr}" && cycle_end = "${cycleEndStr}"`,
+          "",
+          1,
+          0
+        )
+        if (existing && existing.length > 0) {
+          results.push({ company: companyId, status: "already_exists" })
+          continue
+        }
+      } catch (_) {}
+
+      // Load all company_users to compute pro-rata billing
+      let companyUsers = []
+      try {
+        companyUsers = $app.findRecordsByFilter(
+          "company_users",
+          `company = "${companyId}"`,
+          "",
+          1000,
+          0
+        )
+      } catch (_) {}
+
+      const cycleDays = Math.round((cycleEnd.getTime() - cycleStart.getTime()) / MS_PER_DAY)
+      let totalUserDays = 0
+      const breakdown = []
+
+      for (const cu of companyUsers) {
+        const activatedAtStr = cu.getString("activated_at")
+        if (!activatedAtStr) continue // Never activated
+
+        const activatedAt = new Date(activatedAtStr)
+        const deactivatedAtStr = cu.getString("deactivated_at")
+
+        const userStart = activatedAt < cycleStart ? cycleStart : activatedAt
+        const userEnd = deactivatedAtStr
+          ? (new Date(deactivatedAtStr) < cycleEnd ? new Date(deactivatedAtStr) : cycleEnd)
+          : cycleEnd
+
+        if (userEnd <= userStart) continue // Not active in this cycle
+
+        const activeDays = Math.ceil((userEnd.getTime() - userStart.getTime()) / MS_PER_DAY)
+        const subtotalCents = Math.round(PRO_PLAN_MONTHLY_PRICE_CENTS * activeDays / cycleDays)
+
+        totalUserDays += activeDays
+        breakdown.push({
+          userId: cu.getString("user"),
+          active_days: activeDays,
+          subtotal_cents: subtotalCents,
+        })
+      }
+
+      const amountCents = Math.round(PRO_PLAN_MONTHLY_PRICE_CENTS * totalUserDays / cycleDays)
+
+      // Create invoice
+      const invoicesCol = $app.findCollectionByNameOrId("invoices")
+      const invoice = new Record(invoicesCol)
+      invoice.set("company", companyId)
+      invoice.set("cycle_start", cycleStartStr)
+      invoice.set("cycle_end", cycleEndStr)
+      invoice.set("cycle_days", cycleDays)
+      invoice.set("total_user_days", totalUserDays)
+      invoice.set("amount_cents", amountCents)
+      invoice.set("status", "pending")
+      invoice.set("breakdown_json", breakdown)
+      $app.save(invoice)
+
+      results.push({ company: companyId, status: "created", amount_cents: amountCents })
+    } catch (err) {
+      results.push({ company: company.id, status: "error", error: String(err) })
+    }
+  }
+
+  return e.json(200, { processed: results.length, results })
+}, $apis.requireSuperuserAuth())
 
