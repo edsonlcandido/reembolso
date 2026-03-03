@@ -493,6 +493,45 @@ onRecordUpdateRequest((e) => {
 
 
 /**
+ * Hook: companies — enforce admin-only on update/delete
+ *
+ * The collection-level updateRule/deleteRule is kept simple (@request.auth.id != "")
+ * to avoid the "sql: no rows in result set" 404 caused by complex @collection joins.
+ * The actual admin check is done here via a direct DB lookup.
+ */
+function requireCompanyAdmin(e) {
+  const auth = e.auth
+  if (!auth || !auth.id) {
+    throw new ForbiddenError("Autenticação necessária")
+  }
+
+  const companyId = e.record.id
+  try {
+    // auth.id and e.record.id are PocketBase-generated alphanumeric IDs,
+    // not user-supplied values, so string interpolation is safe here.
+    const memberships = $app.findRecordsByFilter(
+      "company_users",
+      `user = "${auth.id}" && company = "${companyId}" && role = "admin"`,
+      "",
+      1,
+      0
+    )
+    if (!memberships || memberships.length === 0) {
+      throw new ForbiddenError("Apenas administradores da empresa podem realizar esta operação")
+    }
+  } catch (err) {
+    if (err instanceof ForbiddenError) throw err
+    throw new ForbiddenError("Erro ao verificar permissões: " + String(err))
+  }
+
+  return e.next()
+}
+
+onRecordUpdateRequest(requireCompanyAdmin, "companies")
+onRecordDeleteRequest(requireCompanyAdmin, "companies")
+
+
+/**
  * Endpoint: Close billing cycle for PRO companies
  *
  * Finds all PRO companies whose billing_anchor_day matches today (UTC) and

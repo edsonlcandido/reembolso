@@ -154,6 +154,27 @@ async function run() {
   const emp = await login(empEmail, empPass)
   ok("Employee logged in")
 
+  // ── 2.1. Test company update permissions ──────────────────────────────────
+  console.log("\n2.1. Testing company update permissions...")
+
+  // Admin CAN update company
+  const r2_1a = await api(`/api/collections/companies/records/${companyId}`, {
+    method: "PATCH",
+    headers: bearer(admin.token),
+    body: { name: "Empresa Teste Atualizada" },
+  })
+  if (r2_1a.status !== 200) fail("Admin should be able to update company", r2_1a.data)
+  ok("Admin CAN update company")
+
+  // Non-admin (employee) CANNOT update company
+  const r2_1b = await api(`/api/collections/companies/records/${companyId}`, {
+    method: "PATCH",
+    headers: bearer(emp.token),
+    body: { name: "Tentativa não autorizada" },
+  })
+  if (r2_1b.status === 200) fail("Employee should NOT be able to update company", r2_1b.data)
+  ok(`Employee CANNOT update company (status=${r2_1b.status}, enforced by hook)`)
+
   // ── 4. Create expense report ──────────────────────────────────────────────
   console.log("\n4. Creating expense report...")
   const r4 = await api("/api/collections/expense_reports/records", {
