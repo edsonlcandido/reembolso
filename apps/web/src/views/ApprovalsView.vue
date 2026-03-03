@@ -63,7 +63,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useExpensesStore } from '../stores/expenses'
 import { useCompanyStore } from '../stores/company'
@@ -96,10 +96,6 @@ async function loadPendingApprovals() {
     errorMsg.value = result.error || 'Erro ao carregar aprovações pendentes.'
   }
 }
-
-watch(() => companyStore.currentCompany, () => {
-  loadPendingApprovals()
-})
 
 onMounted(async () => {
   await companyStore.fetchMyCompanies()

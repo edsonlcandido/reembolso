@@ -154,6 +154,77 @@ async function run() {
   const emp = await login(empEmail, empPass)
   ok("Employee logged in")
 
+  // ── 2.1. Test company update permissions ──────────────────────────────────
+  console.log("\n2.1. Testing company update permissions...")
+
+  // Admin CAN update company
+  const r2_1a = await api(`/api/collections/companies/records/${companyId}`, {
+    method: "PATCH",
+    headers: bearer(admin.token),
+    body: { name: "Empresa Teste Atualizada" },
+  })
+  if (r2_1a.status !== 200) fail("Admin should be able to update company", r2_1a.data)
+  ok("Admin CAN update company")
+
+  // Non-admin (employee) CANNOT update company
+  const r2_1b = await api(`/api/collections/companies/records/${companyId}`, {
+    method: "PATCH",
+    headers: bearer(emp.token),
+    body: { name: "Tentativa não autorizada" },
+  })
+  if (r2_1b.status === 200) fail("Employee should NOT be able to update company", r2_1b.data)
+  ok(`Employee CANNOT update company (status=${r2_1b.status}, enforced by hook)`)
+
+  // ── 2.2. Test category permissions ───────────────────────────────────────
+  console.log("\n2.2. Testing category create/update/delete permissions...")
+
+  // Non-admin (employee) CANNOT create category
+  const r2_2a = await api("/api/collections/categories/records", {
+    method: "POST",
+    headers: bearer(emp.token),
+    body: { company: companyId, name: "Tentativa Não Autorizada", icon: "🚫" },
+  })
+  if (r2_2a.status === 200) fail("Employee should NOT be able to create category", r2_2a.data)
+  if (r2_2a.status !== 403) fail("Employee category create should be rejected with 403", r2_2a.data)
+  ok(`Employee CANNOT create category (status=${r2_2a.status}, enforced by hook)`)
+
+  // Admin CAN create category
+  const r2_2b = await api("/api/collections/categories/records", {
+    method: "POST",
+    headers: bearer(admin.token),
+    body: { company: companyId, name: "Categoria Teste Admin", icon: "🧪" },
+  })
+  if (r2_2b.status !== 200) fail("Admin should be able to create category", r2_2b.data)
+  const testCategoryId = r2_2b.data.id
+  ok(`Admin CAN create category (id=${testCategoryId})`)
+
+  // Admin CAN update category
+  const r2_2c = await api(`/api/collections/categories/records/${testCategoryId}`, {
+    method: "PATCH",
+    headers: bearer(admin.token),
+    body: { name: "Categoria Teste Admin Atualizada" },
+  })
+  if (r2_2c.status !== 200) fail("Admin should be able to update category", r2_2c.data)
+  ok("Admin CAN update category")
+
+  // Non-admin (employee) CANNOT update category
+  const r2_2d = await api(`/api/collections/categories/records/${testCategoryId}`, {
+    method: "PATCH",
+    headers: bearer(emp.token),
+    body: { name: "Tentativa não autorizada" },
+  })
+  if (r2_2d.status === 200) fail("Employee should NOT be able to update category", r2_2d.data)
+  if (r2_2d.status !== 403) fail("Employee category update should be rejected with 403", r2_2d.data)
+  ok(`Employee CANNOT update category (status=${r2_2d.status}, enforced by hook)`)
+
+  // Admin CAN delete category
+  const r2_2e = await api(`/api/collections/categories/records/${testCategoryId}`, {
+    method: "DELETE",
+    headers: bearer(admin.token),
+  })
+  if (r2_2e.status !== 204) fail("Admin should be able to delete category", r2_2e.data)
+  ok("Admin CAN delete category")
+
   // ── 4. Create expense report ──────────────────────────────────────────────
   console.log("\n4. Creating expense report...")
   const r4 = await api("/api/collections/expense_reports/records", {
@@ -195,6 +266,42 @@ async function run() {
   if (r5.status !== 200) fail("Expense item creation", r5.data)
   const itemId = r5.data.id
   ok(`Expense item added (id=${itemId}, amount=${originalItemAmount})`)
+
+  // ── 5.km. Test km-based amount recalculation ──────────────────────────────
+  console.log("\n5.km. Testing km-based expense item amount enforcement...")
+
+  // Set company km_rate so we have a known value to verify against
+  const kmRate = 0.65
+  const rKmRate = await api(`/api/collections/companies/records/${companyId}`, {
+    method: "PATCH",
+    headers: bearer(admin.token),
+    body: { km_rate: kmRate },
+  })
+  if (rKmRate.status !== 200) fail("Setting company km_rate", rKmRate.data)
+  ok(`Company km_rate set to R$${kmRate}/km`)
+
+  const kmCategoryId = categories.find(c => c.name === "Kilometragem")?.id || transportCategoryId
+
+  // Client sends an inflated amount=9999; hook must override it with km × km_rate
+  const kmDistance = 100
+  const expectedAmount = kmDistance * kmRate  // 65.00
+  const rKmItem = await api("/api/collections/expense_items/records", {
+    method: "POST",
+    headers: bearer(emp.token),
+    body: {
+      report: reportId,
+      km: kmDistance,
+      amount: 9999,  // inflated — must be ignored by server
+      description: "Viagem 100km",
+      category: kmCategoryId,
+    },
+  })
+  if (rKmItem.status !== 200) fail("Km expense item creation", rKmItem.data)
+  const serverAmount = rKmItem.data.amount
+  if (Math.abs(serverAmount - expectedAmount) > 0.001) {
+    fail(`Km amount should be recalculated server-side: expected ${expectedAmount}, got ${serverAmount}`, rKmItem.data)
+  }
+  ok(`Km item amount recalculated server-side: ${kmDistance}km × R$${kmRate} = R$${serverAmount} (client sent 9999)`)
 
   // ── 6. Create approver employee ───────────────────────────────────────────
   console.log("\n6. Creating second employee (future approver)...")

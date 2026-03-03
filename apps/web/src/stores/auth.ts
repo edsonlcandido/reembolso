@@ -50,7 +50,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     try {
-      await pb.collection('users').authRefresh()
+      await pb.collection('users').authRefresh({ requestKey: null })
       user.value = pb.authStore.record
       token.value = pb.authStore.token
       return true
