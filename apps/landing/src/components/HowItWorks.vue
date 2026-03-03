@@ -3,7 +3,7 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="text-center mb-16">
         <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Como funciona</h2>
-        <p class="text-lg text-gray-600 max-w-2xl mx-auto">Tres passos simples para um reembolso sem estresse.</p>
+        <p class="text-lg text-gray-600 max-w-2xl mx-auto">Três passos simples para um reembolso sem estresse.</p>
       </div>
       <div class="grid md:grid-cols-3 gap-8 lg:gap-12">
         <div v-for="(step, idx) in steps" :key="idx" class="relative text-center">
@@ -23,15 +23,15 @@
 const steps = [
   {
     title: 'Fotografe o cupom',
-    description: 'Use a camera do celular ou faca upload de uma foto. Aceita JPG, PNG e PDF.',
+    description: 'Use a câmera do celular ou faça upload de uma foto. Aceita JPG, PNG e PDF.',
   },
   {
     title: 'IA extrai os dados',
-    description: 'Em menos de 10 segundos, a inteligencia artificial extrai valor, data, estabelecimento e categoria.',
+    description: 'Em menos de 10 segundos, a inteligência artificial extrai valor, data, estabelecimento e categoria.',
   },
   {
     title: 'Aprove e reembolse',
-    description: 'O gestor recebe a notificacao, revisa os dados e aprova com um clique. Simples assim.',
+    description: 'O gestor recebe a notificação, revisa os dados e aprova com um clique. Simples assim.',
   },
 ]
 </script>

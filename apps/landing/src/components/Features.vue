@@ -2,8 +2,8 @@
   <section id="features" class="py-20">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="text-center mb-16">
-        <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Tudo que voce precisa para gerenciar reembolsos</h2>
-        <p class="text-lg text-gray-600 max-w-2xl mx-auto">Recursos poderosos para funcionarios, gestores e administradores.</p>
+        <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Tudo que você precisa para gerenciar reembolsos</h2>
+        <p class="text-lg text-gray-600 max-w-2xl mx-auto">Recursos poderosos para funcionários, gestores e administradores.</p>
       </div>
       <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
         <FeatureCard v-for="feature in features" :key="feature.id" :feature="feature" />
@@ -36,7 +36,7 @@ const features: Feature[] = [
   {
     id: 2,
     icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
-    title: 'Aprovacao Rapida',
+    title: 'Aprovação Rápida',
     description: 'Dashboard centralizado para gestores aprovarem ou rejeitarem despesas com justificativa em poucos cliques.',
     color: 'secondary',
     hoverColor: 'secondary-200',
@@ -45,15 +45,15 @@ const features: Feature[] = [
     id: 3,
     icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
     title: 'Multi-empresa',
-    description: 'Gerencie multiplas empresas com dados isolados, configuracoes personalizadas e centros de custo independentes.',
+    description: 'Gerencie múltiplas empresas com dados isolados, configurações personalizadas e centros de custo independentes.',
     color: 'purple',
     hoverColor: 'purple-200',
   },
   {
     id: 4,
     icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
-    title: 'Relatorios Completos',
-    description: 'Crie relatorios de despesas com agrupamento por periodo, calculo automatico de totais e rastreamento de status.',
+    title: 'Relatórios Completos',
+    description: 'Crie relatórios de despesas com agrupamento por período, cálculo automático de totais e rastreamento de status.',
     color: 'accent',
     hoverColor: 'accent-200',
   },
@@ -61,7 +61,7 @@ const features: Feature[] = [
     id: 5,
     icon: 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z',
     title: 'Compliance e Auditoria',
-    description: 'Trilha de auditoria completa, logs imutaveis e conformidade com LGPD. Tudo rastreavel e exportavel.',
+    description: 'Trilha de auditoria completa, logs imutáveis e conformidade com LGPD. Tudo rastreável e exportável.',
     color: 'red',
     hoverColor: 'red-200',
   },

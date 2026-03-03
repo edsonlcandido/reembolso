@@ -14,42 +14,6 @@
 routerAdd("GET", "/app/{path...}", $apis.static("pb_public/app", true))
 
 /**
- * Hook: Criação de categorias padrão ao criar uma nova empresa
- *
- * Quando uma empresa é criada, as categorias padrão (Alimentação, Transporte,
- * Hospedagem, Material e Outros) são automaticamente inseridas no banco de dados.
- */
-onRecordAfterCreateSuccess((e) => {
-  const companyId = e.record.id
-
-  const defaultCategories = [
-    { name: "Alimentação", icon: "🍔", color: "#ef4444" },
-    { name: "Transporte", icon: "🚗", color: "#3b82f6" },
-    { name: "Hospedagem", icon: "🏨", color: "#8b5cf6" },
-    { name: "Material", icon: "📦", color: "#eab308" },
-    { name: "Outros", icon: "📁", color: "#6b7280" },
-  ]
-
-  try {
-    const categoriesCol = $app.findCollectionByNameOrId("categories")
-    for (const cat of defaultCategories) {
-      const record = new Record(categoriesCol)
-      record.set("company", companyId)
-      record.set("name", cat.name)
-      record.set("icon", cat.icon)
-      record.set("color", cat.color)
-      record.set("active", true)
-      $app.save(record)
-    }
-  } catch (err) {
-    // Log error but do not fail company creation
-    console.error("Erro ao criar categorias padrão:", err)
-  }
-
-  return e.next()
-}, "companies")
-
-/**
  * Endpoint: Criação de empresa com vínculo do admin
  *
  * Cria a empresa e automaticamente vincula o usuário autenticado como
@@ -77,6 +41,7 @@ routerAdd("POST", "/api/companies/create", (e) => {
     if (body.email) company.set("email", body.email)
     if (body.phone) company.set("phone", body.phone)
     if (body.address) company.set("address", body.address)
+    if (body.km_rate != null) company.set("km_rate", body.km_rate)
     company.set("active", true)
     $app.save(company)
   } catch (err) {
@@ -91,6 +56,7 @@ routerAdd("POST", "/api/companies/create", (e) => {
     membership.set("user", e.auth.id)
     membership.set("role", "admin")
     membership.set("active", true)
+    membership.set("activated_at", new Date().toISOString())
     $app.save(membership)
   } catch (err) {
     // Roll back the company creation so the user is not left with an
@@ -245,148 +211,130 @@ routerAdd("POST", "/api/ai/read-receipt", (e) => {
 
 
 /**
- * Hook: Registrar envio do relatório para aprovação em approval_actions
+ * Endpoint: Close billing cycle for PRO companies
  *
- * Quando um expense_report muda para status `submitted`, registra automaticamente
- * uma ação `forward` no histórico de aprovação apontando para `submitted_to`.
- */
-onRecordUpdateRequest((e) => {
-  const nextStatus = e.record.getString("status")
-
-  // Só registra quando o status final for submitted
-  if (nextStatus !== "submitted") {
-    return e.next()
-  }
-
-  const reportId = e.record.id
-  const previousReport = $app.findRecordById("expense_reports", reportId)
-  const previousStatus = previousReport.getString("status")
-
-  // Evita duplicação quando o relatório já está submetido e apenas outros campos mudam
-  if (previousStatus === "submitted") {
-    return e.next()
-  }
-
-  const response = e.next()
-
-  try {
-    const submittedTo = e.record.getString("submitted_to")
-    const companyId = e.record.getString("company")
-    const actorUserId = (e.auth && e.auth.id) ? e.auth.id : e.record.getString("user")
-
-    if (!submittedTo || !companyId || !actorUserId) {
-      throw new Error("Dados obrigatórios ausentes para registrar ação de envio")
-    }
-
-    const actionsCol = $app.findCollectionByNameOrId("approval_actions")
-    const actionRecord = new Record(actionsCol)
-    actionRecord.set("report", e.record.id)
-    actionRecord.set("company", companyId)
-    actionRecord.set("user", actorUserId)
-    actionRecord.set("action", "forward")
-    actionRecord.set("forwarded_to", submittedTo)
-    actionRecord.set("notes", "Relatório enviado para aprovação")
-    $app.save(actionRecord)
-  } catch (err) {
-    throw new BadRequestError("approval_actions", "Erro ao registrar envio para aprovação: " + String(err))
-  }
-
-  return response
-}, "expense_reports")
-
-
-/**
- * Hook: Validação de Approver ao Criar approval_actions
+ * Finds all PRO companies whose billing_anchor_day matches today (UTC) and
+ * generates an invoice for the completed cycle. Idempotent — skips companies
+ * that already have an invoice for the cycle.
  *
- * onRecordCreateRequest é acionado em cada requisição HTTP de criação de record.
- * Regras:
- * - apenas approvers/admins podem criar ações de encaminhamento/pagamento;
- * - quem aprovou um relatório não pode registrar a ação de pagamento no mesmo relatório.
+ * POST /api/billing/close-cycle
+ * Requires superuser authentication.
  */
-onRecordCreateRequest((e) => {
-  const action = e.record.get("action")
+routerAdd("POST", "/api/billing/close-cycle", (e) => {
+  const MS_PER_DAY = 86400000
+  const PRO_PLAN_MONTHLY_PRICE_CENTS = 1000 // R$10.00 per user per month
 
-  // Não há validações adicionais para outros tipos de ação
-  if (!["forward", "pay", "partially_pay"].includes(action)) {
-    return e.next()
-  }
+  const now = new Date()
+  const today = now.getUTCDate()
 
-  // Validar autenticação
-  const auth = e.auth
-  if (!auth || !auth.id) {
-    throw new BadRequestError("auth", "Autenticação necessária")
-  }
-
-  const actorUserId = e.record.get("user")
-  if (actorUserId && actorUserId !== auth.id) {
-    throw new BadRequestError("user", "A ação deve ser registrada pelo próprio usuário autenticado")
-  }
-
-  // Validar empresa
-  const companyId = e.record.get("company")
-  if (!companyId) {
-    throw new BadRequestError("company", `Empresa é obrigatória para action='${action}'`)
-  }
-
-  // Validar role do usuário
+  let proCompanies
   try {
-    const companyUsers = $app.findRecordsByFilter(
-      "company_users",
-      `user = "${auth.id}" && company = "${companyId}"`,
+    proCompanies = $app.findRecordsByFilter(
+      "companies",
+      `plan = "PRO" && billing_anchor_day = ${today}`,
       "",
-      1,
+      100,
       0
     )
-
-    if (!companyUsers || companyUsers.length === 0) {
-      throw new BadRequestError(
-        "permissions",
-        "Você não está vinculado a esta empresa"
-      )
-    }
-
-    const role = companyUsers[0].get("role")
-
-    if (role !== "approver" && role !== "admin") {
-      throw new BadRequestError(
-        "permissions",
-        `Apenas approvers podem executar '${action}'. Seu role: ${role}`
-      )
-    }
-  } catch (err) {
-    if (err instanceof BadRequestError) {
-      throw err
-    }
-    throw new BadRequestError("permissions", "Erro ao validar permissões: " + String(err))
+  } catch (_) {
+    proCompanies = []
   }
 
-  if (action === "pay" || action === "partially_pay") {
-    const reportId = e.record.get("report")
-    if (!reportId) {
-      throw new BadRequestError("report", "Relatório é obrigatório para ação de pagamento")
-    }
+  if (!proCompanies || proCompanies.length === 0) {
+    return e.json(200, { processed: 0, message: "Nenhuma empresa PRO com ciclo encerrando hoje" })
+  }
 
+  const results = []
+
+  for (const company of proCompanies) {
     try {
-      const report = $app.findRecordById("expense_reports", reportId)
-      const approvedBy = report.getString("approved_by")
-      if (approvedBy && approvedBy === auth.id) {
-        throw new BadRequestError(
-          "permissions",
-          "Quem aprova o relatório não pode efetuar o pagamento deste mesmo relatório"
+      const companyId = company.id
+      const anchorDay = company.getInt("billing_anchor_day") || 1
+
+      // Cycle that ends today: started last month on anchor_day
+      const cycleEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), anchorDay))
+      const cycleStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, anchorDay))
+
+      const cycleStartStr = cycleStart.toISOString().slice(0, 10)
+      const cycleEndStr = cycleEnd.toISOString().slice(0, 10)
+
+      // Idempotency check
+      try {
+        const existing = $app.findRecordsByFilter(
+          "invoices",
+          `company = "${companyId}" && cycle_start = "${cycleStartStr}" && cycle_end = "${cycleEndStr}"`,
+          "",
+          1,
+          0
         )
+        if (existing && existing.length > 0) {
+          results.push({ company: companyId, status: "already_exists" })
+          continue
+        }
+      } catch (_) {}
+
+      // Load all company_users to compute pro-rata billing
+      let companyUsers = []
+      try {
+        companyUsers = $app.findRecordsByFilter(
+          "company_users",
+          `company = "${companyId}"`,
+          "",
+          1000,
+          0
+        )
+      } catch (_) {}
+
+      const cycleDays = Math.round((cycleEnd.getTime() - cycleStart.getTime()) / MS_PER_DAY)
+      let totalUserDays = 0
+      const breakdown = []
+
+      for (const cu of companyUsers) {
+        const activatedAtStr = cu.getString("activated_at")
+        if (!activatedAtStr) continue // Never activated
+
+        const activatedAt = new Date(activatedAtStr)
+        const deactivatedAtStr = cu.getString("deactivated_at")
+
+        const userStart = activatedAt < cycleStart ? cycleStart : activatedAt
+        const userEnd = deactivatedAtStr
+          ? (new Date(deactivatedAtStr) < cycleEnd ? new Date(deactivatedAtStr) : cycleEnd)
+          : cycleEnd
+
+        if (userEnd <= userStart) continue // Not active in this cycle
+
+        const activeDays = Math.ceil((userEnd.getTime() - userStart.getTime()) / MS_PER_DAY)
+        const subtotalCents = Math.round(PRO_PLAN_MONTHLY_PRICE_CENTS * activeDays / cycleDays)
+
+        totalUserDays += activeDays
+        breakdown.push({
+          userId: cu.getString("user"),
+          active_days: activeDays,
+          subtotal_cents: subtotalCents,
+        })
       }
+
+      const amountCents = Math.round(PRO_PLAN_MONTHLY_PRICE_CENTS * totalUserDays / cycleDays)
+
+      // Create invoice
+      const invoicesCol = $app.findCollectionByNameOrId("invoices")
+      const invoice = new Record(invoicesCol)
+      invoice.set("company", companyId)
+      invoice.set("cycle_start", cycleStartStr)
+      invoice.set("cycle_end", cycleEndStr)
+      invoice.set("cycle_days", cycleDays)
+      invoice.set("total_user_days", totalUserDays)
+      invoice.set("amount_cents", amountCents)
+      invoice.set("status", "pending")
+      invoice.set("breakdown_json", breakdown)
+      $app.save(invoice)
+
+      results.push({ company: companyId, status: "created", amount_cents: amountCents })
     } catch (err) {
-      if (err instanceof BadRequestError) {
-        throw err
-      }
-      throw new BadRequestError("report", "Erro ao validar relatório para pagamento: " + String(err))
+      results.push({ company: company.id, status: "error", error: String(err) })
     }
   }
 
-  return e.next()
-}, "approval_actions")
-
-
-
-
+  return e.json(200, { processed: results.length, results })
+}, $apis.requireSuperuserAuth())
 

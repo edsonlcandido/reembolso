@@ -92,7 +92,7 @@
 <script setup lang="ts">
 import { useExpensesStore } from '../stores/expenses'
 import { useCompanyStore } from '../stores/company'
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { PlusIcon, DocumentTextIcon } from '@heroicons/vue/24/outline'
 
@@ -158,10 +158,6 @@ async function loadReports() {
     errorMsg.value = result.error || 'Erro ao carregar relatórios.'
   }
 }
-
-watch(() => companyStore.currentCompany, () => {
-  loadReports()
-})
 
 onMounted(async () => {
   await companyStore.fetchMyCompanies()

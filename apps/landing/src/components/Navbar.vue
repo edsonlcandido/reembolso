@@ -24,7 +24,7 @@
         <div class="flex items-center space-x-3">
           <a href="/app/" class="text-sm font-medium text-gray-700 hover:text-primary-600 transition-colors">Entrar</a>
           <a href="/app/" class="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-semibold rounded-lg hover:bg-primary-700 transition-all shadow-sm">
-            Criar Conta Gratis
+            Criar Conta Grátis
           </a>
         </div>
       </div>

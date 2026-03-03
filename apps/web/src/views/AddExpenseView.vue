@@ -106,12 +106,25 @@
                 <option v-else disabled value="">Nenhuma categoria cadastrada</option>
               </select>
             </div>
+            <div v-if="isKmCategory">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Quilômetros (km) <span class="text-red-500">*</span></label>
+              <input v-model="itemForm.km" type="number" step="0.1" min="0"
+                class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                placeholder="Ex: 150" />
+              <p v-if="companyStore.currentCompany?.km_rate" class="mt-1 text-xs text-gray-500">
+                Taxa: R$ {{ Number(companyStore.currentCompany.km_rate).toFixed(2).replace('.', ',') }}/km
+              </p>
+              <p v-else class="mt-1 text-xs text-amber-600">Taxa por km não configurada na empresa. Configure em Editar Empresa.</p>
+            </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Valor (R$) <span
                   class="text-red-500">*</span></label>
               <input v-model="itemForm.amountDisplay" type="number" step="0.01" min="0" required
+                :readonly="isKmCategory"
                 class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                :class="{ 'bg-gray-50 cursor-not-allowed': isKmCategory }"
                 placeholder="0,00" />
+              <p v-if="isKmCategory" class="mt-1 text-xs text-gray-500">Calculado automaticamente: km × taxa/km</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Estabelecimento</label>
@@ -158,7 +171,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import pb from '../services/pocketbase'
 import { useExpensesStore } from '../stores/expenses'
@@ -181,6 +194,25 @@ const fileInputRef = ref<HTMLInputElement | null>(null)
 const cameraInputRef = ref<HTMLInputElement | null>(null)
 const categories = ref<RecordModel[]>([])
 
+// Detect if the selected category is "Kilometragem"
+const isKmCategory = computed(() => {
+  if (!itemForm.value.category) return false
+  const cat = categories.value.find(c => c.id === itemForm.value.category)
+  return cat?.name?.toLowerCase() === 'kilometragem'
+})
+
+// Auto-calculate amount when km or category changes
+watch([() => itemForm.value.km, isKmCategory], () => {
+  if (!isKmCategory.value) return
+  const km = parseFloat(itemForm.value.km || '0')
+  const kmRate = companyStore.currentCompany?.km_rate ?? 0
+  if (km > 0 && kmRate > 0) {
+    itemForm.value.amountDisplay = (km * kmRate).toFixed(2)
+  } else {
+    itemForm.value.amountDisplay = ''
+  }
+})
+
 const itemForm = ref({
   date: '',
   category: '',
@@ -188,10 +220,11 @@ const itemForm = ref({
   merchant: '',
   description: '',
   notes: '',
+  km: '',
 })
 
 function resetForm() {
-  itemForm.value = { date: '', category: '', amountDisplay: '', merchant: '', description: '', notes: '' }
+  itemForm.value = { date: '', category: '', amountDisplay: '', merchant: '', description: '', notes: '', km: '' }
   receiptFile.value = null
   if (fileInputRef.value) fileInputRef.value.value = ''
   if (cameraInputRef.value) cameraInputRef.value.value = ''
@@ -340,6 +373,7 @@ async function handleAddItem() {
     merchant: itemForm.value.merchant || undefined,
     description: itemForm.value.description || undefined,
     notes: itemForm.value.notes || undefined,
+    km: isKmCategory.value && itemForm.value.km ? parseFloat(itemForm.value.km) : undefined,
   }
 
   try {

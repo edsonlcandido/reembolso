@@ -92,7 +92,7 @@ export const useExpensesStore = defineStore('expenses', () => {
     }
   }
 
-  async function createReport(data: { company: string; title: string; period_start?: string; period_end?: string; cost_center?: string; project?: string; description?: string }) {
+  async function createReport(data: { company: string; title: string; period_start?: string; period_end?: string; cost_center?: string; project?: string; description?: string; advance_amount?: number }) {
     loading.value = true
     try {
       const record = await pb.collection('expense_reports').create({
@@ -103,7 +103,9 @@ export const useExpensesStore = defineStore('expenses', () => {
       })
       return { success: true, data: record }
     } catch (error: any) {
-      return { success: false, error: error?.message || 'Erro ao criar relatório.' }
+      const isPlanLimitError = !!(error?.data?.plan_limit)
+      const planLimitMsg = error?.data?.plan_limit?.message
+      return { success: false, error: planLimitMsg || error?.message || 'Erro ao criar relatório.', isPlanLimitError }
     } finally {
       loading.value = false
     }
@@ -170,7 +172,6 @@ export const useExpensesStore = defineStore('expenses', () => {
     try {
       const record = await pb.collection('expense_reports').update(id, {
         status: 'rejected',
-        rejection_reason: reason,
         approved_by: pb.authStore.record?.id,
         approved_at: new Date().toISOString(),
       })
@@ -194,12 +195,11 @@ export const useExpensesStore = defineStore('expenses', () => {
     }
   }
 
-  async function returnForRevision(id: string, reason: string) {
+  async function returnForRevision(id: string, reason: string = '') {
     loading.value = true
     try {
       const record = await pb.collection('expense_reports').update(id, {
         status: 'draft',
-        rejection_reason: reason,
         submitted_at: null,
         submitted_to: null,
         approved_by: null,

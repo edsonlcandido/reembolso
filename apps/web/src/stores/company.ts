@@ -51,7 +51,7 @@ export const useCompanyStore = defineStore('company', () => {
     }
   }
 
-  async function createCompany(data: { name: string; slug: string; cnpj?: string; email?: string; phone?: string; address?: string }) {
+  async function createCompany(data: { name: string; slug: string; cnpj?: string; email?: string; phone?: string; address?: string; km_rate?: number }) {
     loading.value = true
     try {
       // Use the custom server-side endpoint so the company and the admin
@@ -73,7 +73,7 @@ export const useCompanyStore = defineStore('company', () => {
     }
   }
 
-  async function updateCompany(id: string, data: Partial<{ name: string; slug: string; cnpj: string; email: string; phone: string; address: string }>) {
+  async function updateCompany(id: string, data: Partial<{ name: string; slug: string; cnpj: string; email: string; phone: string; address: string; km_rate: number }>) {
     loading.value = true
     try {
       await pb.collection('companies').update(id, data)
