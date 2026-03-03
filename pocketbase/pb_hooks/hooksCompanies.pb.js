@@ -14,7 +14,7 @@ onRecordAfterCreateSuccess((e) => {
     { name: "Transporte", icon: "🚗", color: "#3b82f6" },
     { name: "Hospedagem", icon: "🏨", color: "#8b5cf6" },
     { name: "Material", icon: "📦", color: "#eab308" },
-    { name: "Kilometragem", icon: "🛣️", color: "#10b981" },
+    { name: "Quilometragem", icon: "🛣️", color: "#10b981" },
     { name: "Outros", icon: "📁", color: "#6b7280" },
   ]
 

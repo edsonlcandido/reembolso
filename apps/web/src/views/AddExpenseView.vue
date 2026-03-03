@@ -204,11 +204,11 @@ const itemForm = ref({
   km: '',
 })
 
-// Detect if the selected category is "Kilometragem"
+// Detect if the selected category is "Quilometragem"
 const isKmCategory = computed(() => {
   if (!itemForm.value.category) return false
   const cat = categories.value.find(c => c.id === itemForm.value.category)
-  return cat?.name?.toLowerCase() === 'kilometragem'
+  return cat?.name?.toLowerCase() === 'quilometragem'
 })
 
 // Auto-calculate amount when km or category changes
