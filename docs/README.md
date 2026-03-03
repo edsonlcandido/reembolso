@@ -34,7 +34,19 @@ Bem-vindo à documentação completa do Sistema de Reembolso Inteligente com IA.
 
 ---
 
-### 3. [API.md](./API.md) - Documentação da API
+### 3. [USER_STORIES.md](./USER_STORIES.md) - Histórias de Usuário
+**O que é:** Lista das principais histórias de usuário organizadas por papel  
+**Para quem:** Product Managers, Desenvolvedores, QA, Stakeholders  
+**Conteúdo:**
+- Histórias de usuário para Funcionário, Aprovador e Admin
+- Critérios de aceitação por história
+- Tabela de resumo de permissões por papel
+
+**Quando usar:** Para entender quais funcionalidades cada papel tem acesso, planejar sprints e validar requisitos.
+
+---
+
+### 4. [API.md](./API.md) - Documentação da API
 **O que é:** Referência completa da API REST  
 **Para quem:** Desenvolvedores Frontend, Integradores  
 **Conteúdo:**
@@ -207,6 +219,9 @@ Bem-vindo à documentação completa do Sistema de Reembolso Inteligente com IA.
 ---
 
 ## 🔄 Changelog da Documentação
+
+### v1.1.0 - 2026-03-03
+- ✨ Adição das Histórias de Usuário (USER_STORIES.md)
 
 ### v1.0.0 - 2026-02-10
 - ✨ Criação do PRD completo
