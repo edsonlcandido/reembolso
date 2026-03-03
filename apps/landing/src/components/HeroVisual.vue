@@ -5,7 +5,7 @@
       <div class="w-3 h-3 bg-red-400 rounded-full"></div>
       <div class="w-3 h-3 bg-yellow-400 rounded-full"></div>
       <div class="w-3 h-3 bg-green-400 rounded-full"></div>
-      <span class="ml-3 text-gray-400 text-sm">Dashboard - Reembolso Inteligente</span>
+      <span class="ml-3 text-gray-400 text-sm">Reembolsa AI - Gestão de reembolsos com IA</span>
     </div>
 
     <!-- Content -->

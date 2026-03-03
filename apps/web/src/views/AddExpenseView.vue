@@ -194,6 +194,16 @@ const fileInputRef = ref<HTMLInputElement | null>(null)
 const cameraInputRef = ref<HTMLInputElement | null>(null)
 const categories = ref<RecordModel[]>([])
 
+const itemForm = ref({
+  date: '',
+  category: '',
+  amountDisplay: '',
+  merchant: '',
+  description: '',
+  notes: '',
+  km: '',
+})
+
 // Detect if the selected category is "Kilometragem"
 const isKmCategory = computed(() => {
   if (!itemForm.value.category) return false
@@ -211,16 +221,6 @@ watch([() => itemForm.value.km, isKmCategory], () => {
   } else {
     itemForm.value.amountDisplay = ''
   }
-})
-
-const itemForm = ref({
-  date: '',
-  category: '',
-  amountDisplay: '',
-  merchant: '',
-  description: '',
-  notes: '',
-  km: '',
 })
 
 function resetForm() {

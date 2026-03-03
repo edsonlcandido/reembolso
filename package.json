@@ -1,7 +1,7 @@
 {
-    "name": "pocketbase-vue-tailwind-template",
+    "name": "reembolsa-ai",
     "version": "1.0.0",
-    "description": "Template para projetos com PocketBase + Vue + TypeScript + Tailwind CSS",
+    "description": "Sistema inteligente de reembolso de despesas com OCR via IA. Tire foto do cupom fiscal, a IA extrai os dados automaticamente e há aprovação rápida e sem burocracia. Ideal para empresas de qualquer tamanho.",
     "private": true,
     "type": "module",
     "engines": {

@@ -35,7 +35,8 @@ const plans: Plan[] = [
     period: '/mês',
     features: [
       'Até 5 relatórios/mês',
-      'OCR básico',
+      'OCR com IA',
+      'Fluxo de aprovação',
       'Suporte por email',
     ],
     cta: 'Começar Grátis',
@@ -48,7 +49,7 @@ const plans: Plan[] = [
     period: '/usuário/mês',
     features: [
       'Relatórios ilimitados',
-      'OCR avançado com IA',
+      'OCR com IA',
       'Fluxo de aprovação',
       'Suporte prioritário',
     ],
@@ -63,9 +64,7 @@ const plans: Plan[] = [
     period: '',
     features: [
       'Tudo do Profissional',
-      'SSO / SAML',
-      'API dedicada',
-      'SLA garantido',
+      'SSO e integração personalizada',
     ],
     cta: 'Falar com Vendas',
   },
