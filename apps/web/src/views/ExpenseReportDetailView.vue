@@ -764,18 +764,18 @@ const itemForm = ref({
 
 const report = computed(() => expensesStore.currentReport)
 
-// Detect if the selected category is "Kilometragem" (inline add form)
+// Detect if the selected category is "Quilometragem" (inline add form)
 const isKmCategory = computed(() => {
   if (!itemForm.value.category) return false
   const cat = categories.value.find(c => c.id === itemForm.value.category)
-  return cat?.name?.toLowerCase() === 'kilometragem'
+  return cat?.name?.toLowerCase() === 'quilometragem'
 })
 
-// Detect if edit item category is "Kilometragem"
+// Detect if edit item category is "Quilometragem"
 const isEditKmCategory = computed(() => {
   if (!editItemForm.value.category) return false
   const cat = categories.value.find(c => c.id === editItemForm.value.category)
-  return cat?.name?.toLowerCase() === 'kilometragem'
+  return cat?.name?.toLowerCase() === 'quilometragem'
 })
 
 // Auto-calculate amount for inline add form

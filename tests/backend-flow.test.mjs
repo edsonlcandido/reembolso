@@ -280,7 +280,7 @@ async function run() {
   if (rKmRate.status !== 200) fail("Setting company km_rate", rKmRate.data)
   ok(`Company km_rate set to R$${kmRate}/km`)
 
-  const kmCategoryId = categories.find(c => c.name === "Kilometragem")?.id || transportCategoryId
+  const kmCategoryId = categories.find(c => c.name === "Quilometragem")?.id || transportCategoryId
 
   // Client sends an inflated amount=9999; hook must override it with km × km_rate
   const kmDistance = 100
