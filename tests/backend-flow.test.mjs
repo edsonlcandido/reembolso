@@ -175,6 +175,56 @@ async function run() {
   if (r2_1b.status === 200) fail("Employee should NOT be able to update company", r2_1b.data)
   ok(`Employee CANNOT update company (status=${r2_1b.status}, enforced by hook)`)
 
+  // ── 2.2. Test category permissions ───────────────────────────────────────
+  console.log("\n2.2. Testing category create/update/delete permissions...")
+
+  // Non-admin (employee) CANNOT create category
+  const r2_2a = await api("/api/collections/categories/records", {
+    method: "POST",
+    headers: bearer(emp.token),
+    body: { company: companyId, name: "Tentativa Não Autorizada", icon: "🚫" },
+  })
+  if (r2_2a.status === 200) fail("Employee should NOT be able to create category", r2_2a.data)
+  if (r2_2a.status !== 403) fail("Employee category create should be rejected with 403", r2_2a.data)
+  ok(`Employee CANNOT create category (status=${r2_2a.status}, enforced by hook)`)
+
+  // Admin CAN create category
+  const r2_2b = await api("/api/collections/categories/records", {
+    method: "POST",
+    headers: bearer(admin.token),
+    body: { company: companyId, name: "Categoria Teste Admin", icon: "🧪" },
+  })
+  if (r2_2b.status !== 200) fail("Admin should be able to create category", r2_2b.data)
+  const testCategoryId = r2_2b.data.id
+  ok(`Admin CAN create category (id=${testCategoryId})`)
+
+  // Admin CAN update category
+  const r2_2c = await api(`/api/collections/categories/records/${testCategoryId}`, {
+    method: "PATCH",
+    headers: bearer(admin.token),
+    body: { name: "Categoria Teste Admin Atualizada" },
+  })
+  if (r2_2c.status !== 200) fail("Admin should be able to update category", r2_2c.data)
+  ok("Admin CAN update category")
+
+  // Non-admin (employee) CANNOT update category
+  const r2_2d = await api(`/api/collections/categories/records/${testCategoryId}`, {
+    method: "PATCH",
+    headers: bearer(emp.token),
+    body: { name: "Tentativa não autorizada" },
+  })
+  if (r2_2d.status === 200) fail("Employee should NOT be able to update category", r2_2d.data)
+  if (r2_2d.status !== 403) fail("Employee category update should be rejected with 403", r2_2d.data)
+  ok(`Employee CANNOT update category (status=${r2_2d.status}, enforced by hook)`)
+
+  // Admin CAN delete category
+  const r2_2e = await api(`/api/collections/categories/records/${testCategoryId}`, {
+    method: "DELETE",
+    headers: bearer(admin.token),
+  })
+  if (r2_2e.status !== 204) fail("Admin should be able to delete category", r2_2e.data)
+  ok("Admin CAN delete category")
+
   // ── 4. Create expense report ──────────────────────────────────────────────
   console.log("\n4. Creating expense report...")
   const r4 = await api("/api/collections/expense_reports/records", {
