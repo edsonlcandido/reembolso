@@ -151,16 +151,16 @@ GET /api/collections/companies/records
     {
       "id": "comp123",
       "name": "Acme Corp",
+      "slug": "acme-corp",
       "cnpj": "12.345.678/0001-90",
       "email": "contato@acme.com",
       "phone": "(11) 98765-4321",
       "address": "Rua das Flores, 123",
       "logo": "comp123/logo_abc.png",
       "currency": "BRL",
-      "settings": {
-        "max_report_value": 500000,
-        "approval_levels": 2
-      },
+      "km_rate": 100,
+      "plan": "FREE",
+      "billing_anchor_day": 1,
       "active": true,
       "created": "2026-01-10 09:00:00.000Z",
       "updated": "2026-02-05 16:00:00.000Z"
@@ -169,34 +169,11 @@ GET /api/collections/companies/records
 }
 ```
 
-#### 2.2 Criar Empresa
-```http
-POST /api/collections/companies/records
-```
+> **Campos:** `plan` pode ser `FREE` ou `PRO`. `km_rate` é o valor em **centavos** por km (ex: `100` = R$ 1,00/km). `slug` é gerado automaticamente a partir do nome da empresa (minúsculas, hífens, único) e não é editável. `billing_anchor_day` é o dia do mês que inicia o ciclo de faturamento; para meses com menos dias, o ciclo começa no último dia do mês.
 
-**Body (multipart/form-data):**
-```json
-{
-  "name": "Nova Empresa LTDA",
-  "cnpj": "98.765.432/0001-10",
-  "email": "contato@novaempresa.com",
-  "phone": "(11) 91234-5678",
-  "address": "Av. Principal, 456",
-  "logo": <file>,
-  "currency": "BRL",
-  "settings": {},
-  "active": true
-}
-```
+#### 2.2 Criar Empresa (via endpoint customizado)
 
-**Response (200 OK):**
-```json
-{
-  "id": "comp456",
-  "name": "Nova Empresa LTDA",
-  ...
-}
-```
+> **Importante:** A criação de empresa deve ser feita pelo endpoint customizado `/api/companies/create` (ver Seção 9.1), que vincula automaticamente o criador como administrador.
 
 #### 2.3 Atualizar Empresa
 ```http
@@ -207,11 +184,12 @@ PATCH /api/collections/companies/records/:id
 ```json
 {
   "name": "Nova Empresa LTDA - Filial",
-  "settings": {
-    "max_report_value": 1000000
-  }
+  "km_rate": 150,
+  "plan": "PRO"
 }
 ```
+
+> **Efeito do `km_rate`:** A alteração afeta apenas **novos** itens de despesa criados após a mudança. Itens de km existentes não são recalculados retroativamente.
 
 **Response (200 OK):**
 ```json
@@ -291,37 +269,53 @@ POST /api/collections/company_users/records
 ```json
 {
   "id": "cu789",
+  "company": "comp123",
+  "user": "user456",
+  "role": "approver",
+  "cost_center": "Financeiro",
+  "active": true,
+  "activated_at": "2026-02-10 14:00:00.000Z",
+  "deactivated_at": null,
   ...
 }
 ```
 
+> **Roles disponíveis:** `admin`, `approver`, `employee`.  
+> **Campos automáticos:** `activated_at` é preenchido automaticamente quando `active=true`. `deactivated_at` é preenchido quando `active` muda para `false`.
+
 ---
 
-### 4. Aprovadores
+### 4. Ações de Aprovação (approval_actions)
 
-#### 4.1 Listar Aprovadores
+A trilha de auditoria do fluxo de aprovação é registrada na collection `approval_actions`. Cada ação realizada por um aprovador ou admin gera um registro nesta collection.
+
+#### 4.1 Listar Ações de um Relatório
 ```http
-GET /api/collections/approvers/records
+GET /api/collections/approval_actions/records
 ```
 
 **Query Parameters:**
-- `filter`: Ex: `company='comp123' && active=true`
-- `expand`: `user,delegates_to`
+- `filter`: Ex: `report='rep123'`
+- `expand`: `user,forwarded_to`
+- `sort`: `created`
 
 **Response (200 OK):**
 ```json
 {
   "items": [
     {
-      "id": "app123",
+      "id": "act123",
+      "report": "rep123",
       "company": "comp123",
       "user": "user789",
-      "level": 1,
-      "max_amount": 500000,
-      "delegates_to": null,
-      "active": true,
+      "action": "approve",
+      "notes": "Despesas dentro da política.",
+      "forwarded_to": null,
+      "created": "2026-02-11T09:00:00Z",
+      "updated": "2026-02-11T09:00:00Z",
       "expand": {
         "user": {
+          "id": "user789",
           "name": "João Gerente",
           "email": "joao@example.com"
         }
@@ -331,21 +325,42 @@ GET /api/collections/approvers/records
 }
 ```
 
-#### 4.2 Criar Aprovador
+**Valores possíveis para `action`:**
+- `approve` — Relatório aprovado
+- `reject` — Relatório rejeitado
+- `forward` — Encaminhado para outro aprovador (campo `forwarded_to` preenchido)
+- `pay` — Relatório marcado como pago integralmente
+- `partially_pay` — Um ou mais itens marcados como pagos
+
+#### 4.2 Criar Ação de Aprovação
 ```http
-POST /api/collections/approvers/records
+POST /api/collections/approval_actions/records
 ```
 
 **Body:**
 ```json
 {
+  "report": "rep123",
   "company": "comp123",
   "user": "user789",
-  "level": 1,
-  "max_amount": 1000000,
-  "active": true
+  "action": "approve",
+  "notes": "Aprovado conforme política."
 }
 ```
+
+**Body para encaminhamento:**
+```json
+{
+  "report": "rep123",
+  "company": "comp123",
+  "user": "user789",
+  "action": "forward",
+  "forwarded_to": "user999",
+  "notes": "Encaminhando para o gestor do projeto."
+}
+```
+
+> **Validações automáticas (via hooks):** O sistema valida que apenas usuários com role `admin` ou `approver` na empresa podem registrar ações de aprovação. Um usuário que aprovou o relatório não pode registrar a ação de pagamento do mesmo relatório.
 
 ---
 
@@ -358,7 +373,7 @@ GET /api/collections/expense_reports/records
 
 **Query Parameters:**
 - `filter`: Ex: `user='user123' && status='submitted'`
-- `expand`: `company,user,approved_by`
+- `expand`: `company,user,approved_by,submitted_to`
 - `sort`: Ex: `-created`
 
 **Response (200 OK):**
@@ -376,8 +391,10 @@ GET /api/collections/expense_reports/records
       "project": "Projeto Alpha",
       "description": "Despesas da viagem de vendas",
       "total_amount": 245000,
+      "advance_amount": 0,
       "status": "submitted",
       "submitted_at": "2026-01-21 10:00:00.000Z",
+      "submitted_to": "user789",
       "approved_by": null,
       "approved_at": null,
       "rejection_reason": null,
@@ -387,6 +404,10 @@ GET /api/collections/expense_reports/records
   ]
 }
 ```
+
+> **Valores possíveis para `status`:** `draft`, `submitted`, `approved`, `rejected`, `paid`, `partially_paid`.  
+> **Campo `advance_amount`:** Valor de adiantamento já recebido pelo funcionário (em centavos).  
+> **Campo `submitted_to`:** Referência ao usuário aprovador para quem o relatório foi enviado.
 
 #### 5.2 Criar Relatório
 ```http
@@ -421,42 +442,56 @@ POST /api/collections/expense_reports/records
 PATCH /api/collections/expense_reports/records/:id
 ```
 
-**Body:**
+**Body (submissão):**
 ```json
 {
   "status": "submitted",
-  "submitted_at": "2026-02-10T14:30:00Z"
+  "submitted_at": "2026-02-10T14:30:00Z",
+  "submitted_to": "user789"
 }
 ```
+
+> **Efeito automático (hook):** Ao mudar `status` para `submitted`, o sistema cria automaticamente um registro na collection `approval_actions` com `action=forward`, registrando quem recebeu o relatório para aprovação.  
+> **Limite FREE:** No plano FREE, são permitidos até 5 relatórios por ciclo. Ao atingir o limite, novos envios são bloqueados com erro `plan_limit`:
+> ```json
+> { "code": 400, "message": "Limite de relatórios do plano FREE atingido.", "data": { "plan_limit": { "code": "plan_limit", "message": "Limite de 5 relatórios por ciclo atingido." } } }
+> ```
 
 #### 5.4 Aprovar Relatório
 ```http
-PATCH /api/collections/expense_reports/records/:id
+POST /api/collections/approval_actions/records
 ```
 
 **Body:**
 ```json
 {
-  "status": "approved",
-  "approved_by": "user789",
-  "approved_at": "2026-02-11T09:00:00Z"
+  "report": "rep123",
+  "company": "comp123",
+  "user": "user789",
+  "action": "approve",
+  "notes": "Aprovado."
 }
 ```
+
+> A mudança de status do relatório para `approved` é feita pelo frontend após criar a ação de aprovação com `action=approve`.
 
 #### 5.5 Rejeitar Relatório
 ```http
-PATCH /api/collections/expense_reports/records/:id
+POST /api/collections/approval_actions/records
 ```
 
 **Body:**
 ```json
 {
-  "status": "rejected",
-  "rejection_reason": "Falta justificativa para algumas despesas",
-  "approved_by": "user789",
-  "approved_at": "2026-02-11T09:00:00Z"
+  "report": "rep123",
+  "company": "comp123",
+  "user": "user789",
+  "action": "reject",
+  "notes": "Falta justificativa para algumas despesas."
 }
 ```
+
+> A mudança de status para `rejected` e o preenchimento de `rejection_reason` são feitos pelo frontend após criar a ação com `action=reject`.
 
 ---
 
@@ -485,7 +520,7 @@ GET /api/collections/expense_items/records
       "receipt_image": "item123/receipt_xyz.jpg",
       "merchant": "Restaurante Sabor",
       "ocr_data": {
-        "valor_total": 8550,
+        "valor_total": 85.50,
         "data": "2026-01-15",
         "hora": "12:30",
         "estabelecimento": "Restaurante Sabor",
@@ -494,12 +529,19 @@ GET /api/collections/expense_items/records
       "ocr_confidence": 0.95,
       "ocr_processed": true,
       "notes": "",
+      "km": 0,
+      "paid": false,
+      "paid_by": null,
+      "paid_at": null,
       "created": "2026-01-15T15:00:00Z",
       "updated": "2026-01-15T15:02:00Z"
     }
   ]
 }
 ```
+
+> **Campo `km`:** Para despesas de deslocamento, o campo `km` registra a distância percorrida. O `amount` é calculado automaticamente via hook: `km × company.km_rate`.  
+> **Campos de pagamento:** `paid`, `paid_by` e `paid_at` são atualizados quando o aprovador marca o item como pago.
 
 #### 6.2 Criar Item de Despesa (com OCR)
 ```http
@@ -529,7 +571,7 @@ POST /api/collections/expense_items/records
 }
 ```
 
-> **Nota:** O processamento OCR é assíncrono. O campo `ocr_processed` será `true` e os dados preenchidos quando completo.
+> **Nota:** O processamento OCR é feito de forma **síncrona** via endpoint customizado `POST /api/ai/read-receipt` (ver Seção 9.3). O frontend envia a imagem em base64, recebe os dados extraídos, e os usa para pré-preencher o formulário antes de criar o item.
 
 #### 6.3 Atualizar Item (após revisão OCR)
 ```http
@@ -609,42 +651,160 @@ POST /api/collections/categories/records
 
 ---
 
-### 8. Logs de Auditoria
+### 8. Variáveis de Sistema (system_variables)
 
-#### 8.1 Listar Logs
+Usada internamente para armazenar configurações globais da plataforma, como chaves de API.
+
+#### 8.1 Listar Variáveis (apenas superusuário)
 ```http
-GET /api/collections/audit_logs/records
+GET /api/collections/system_variables/records
 ```
-
-**Query Parameters:**
-- `filter`: `company='comp123' && action~'approve'`
-- `expand`: `user`
-- `sort`: `-created`
 
 **Response (200 OK):**
 ```json
 {
   "items": [
     {
-      "id": "log123",
-      "user": "user789",
-      "company": "comp123",
-      "action": "expense_report.approved",
-      "entity_type": "expense_reports",
-      "entity_id": "rep123",
-      "changes": {
-        "status": {
-          "old": "submitted",
-          "new": "approved"
-        }
-      },
-      "ip_address": "192.168.1.1",
-      "user_agent": "Mozilla/5.0...",
-      "created": "2026-02-11T09:00:00Z"
+      "id": "sv123",
+      "key": "OPENROUTER_API_KEY",
+      "value": "sk-or-...",
+      "description": "Chave da API do OpenRouter para OCR"
     }
   ]
 }
 ```
+
+> **Acesso restrito:** Esta collection é acessível apenas via PocketBase Admin UI ou superusuário. A chave de API de IA **não** deve ser exposta em variáveis de ambiente do frontend.
+
+---
+
+### 9. Endpoints Customizados
+
+Além da API padrão do PocketBase, o sistema expõe os seguintes endpoints customizados implementados em `pocketbase/pb_hooks/main.pb.js`:
+
+#### 9.1 Criar Empresa
+```http
+POST /api/companies/create
+```
+
+Cria uma nova empresa e vincula automaticamente o usuário autenticado como administrador (`role=admin`) na `company_users`.
+
+**Headers:**
+```
+Authorization: YOUR_AUTH_TOKEN
+```
+
+**Body:**
+```json
+{
+  "name": "Minha Empresa LTDA",
+  "cnpj": "12.345.678/0001-90",
+  "email": "contato@empresa.com",
+  "phone": "(11) 91234-5678",
+  "address": "Av. Principal, 456"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "company": {
+    "id": "comp789",
+    "name": "Minha Empresa LTDA",
+    "slug": "minha-empresa-ltda",
+    "plan": "FREE",
+    ...
+  },
+  "companyUser": {
+    "id": "cu001",
+    "company": "comp789",
+    "user": "user123",
+    "role": "admin",
+    "active": true
+  }
+}
+```
+
+#### 9.2 Buscar Usuário por E-mail
+```http
+POST /api/users/find-by-email
+```
+
+Permite buscar um usuário pelo e-mail sem expor a collection diretamente. Usado para convidar membros à empresa.
+
+**Headers:**
+```
+Authorization: YOUR_AUTH_TOKEN
+```
+
+**Body:**
+```json
+{
+  "email": "funcionario@example.com"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "id": "user456",
+  "name": "Ana Souza",
+  "email": "funcionario@example.com"
+}
+```
+
+**Response (404 Not Found):**
+```json
+{
+  "message": "Usuário não encontrado."
+}
+```
+
+#### 9.3 Leitura de Recibo com IA (OCR)
+```http
+POST /api/ai/read-receipt
+```
+
+Envia uma imagem de cupom fiscal (em base64) para o modelo de IA (via OpenRouter) e retorna os dados extraídos. O processamento é **síncrono**.
+
+**Headers:**
+```
+Authorization: YOUR_AUTH_TOKEN
+```
+
+**Body:**
+```json
+{
+  "image": "data:image/jpeg;base64,/9j/4AAQ...",
+  "mimeType": "image/jpeg"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "valor_total": 85.50,
+  "data": "2026-01-15",
+  "hora": "12:30",
+  "estabelecimento": "Restaurante Sabor",
+  "categoria": "food",
+  "itens": [
+    { "descricao": "Prato Executivo", "valor": 45.00 },
+    { "descricao": "Suco de Laranja", "valor": 12.50 }
+  ]
+}
+```
+
+> **Atenção:** O campo `valor_total` retornado é em **reais** (decimal). Para salvar o item em `expense_items`, o frontend deve converter para **centavos** multiplicando por 100. Ex: `85.50 × 100 = 8550`.
+
+**Response (500 Internal Server Error — chave de API não configurada):**
+```json
+{
+  "message": "API key não configurada."
+}
+```
+
+> **Configuração:** A chave da API é armazenada na collection `system_variables` com `key=OPENROUTER_API_KEY`. Deve ser configurada via PocketBase Admin UI.
 
 ---
 
@@ -753,16 +913,6 @@ pb.collection('expense_reports').unsubscribe()
   }
 }
 ```
-
----
-
-## Rate Limiting
-
-- **Limite:** 100 requests por minuto por IP
-- **Header de resposta:**
-  - `X-RateLimit-Limit: 100`
-  - `X-RateLimit-Remaining: 95`
-  - `X-RateLimit-Reset: 1676048400`
 
 ---
 

@@ -11,81 +11,59 @@ reembolso/
 ├── apps/
 │   ├── landing/                 # Landing page institucional
 │   │   ├── src/
-│   │   │   ├── components/      # Componentes da landing
-│   │   │   │   ├── Hero.vue
-│   │   │   │   ├── Features.vue
-│   │   │   │   ├── HowItWorks.vue
-│   │   │   │   ├── Pricing.vue
-│   │   │   │   └── FAQ.vue
 │   │   │   ├── main.ts
 │   │   │   └── style.css
 │   │   └── public/
 │   │
 │   └── web/                     # Aplicação web principal
 │       ├── src/
-│       │   ├── components/      # Componentes reutilizáveis
-│       │   │   ├── common/      # Botões, inputs, modals
-│       │   │   ├── expense/     # Relacionados a despesas
-│       │   │   └── approval/    # Relacionados a aprovações
 │       │   ├── views/           # Páginas/Views
-│       │   │   ├── auth/
-│       │   │   │   ├── Login.vue
-│       │   │   │   └── Register.vue
-│       │   │   ├── dashboard/
-│       │   │   │   └── Dashboard.vue
-│       │   │   ├── companies/
-│       │   │   │   ├── CompanyList.vue
-│       │   │   │   └── CompanyForm.vue
-│       │   │   ├── expenses/
-│       │   │   │   ├── ExpenseList.vue
-│       │   │   │   ├── ExpenseForm.vue
-│       │   │   │   └── ExpenseDetail.vue
-│       │   │   └── approvals/
-│       │   │       ├── ApprovalList.vue
-│       │   │       └── ApprovalDetail.vue
+│       │   │   ├── LoginView.vue
+│       │   │   ├── DashboardView.vue
+│       │   │   ├── ProfileView.vue
+│       │   │   ├── CompaniesListView.vue
+│       │   │   ├── CompanyAuthView.vue
+│       │   │   ├── CompanyMembersView.vue
+│       │   │   ├── CompanySetupView.vue
+│       │   │   ├── ExpenseReportsView.vue
+│       │   │   ├── CreateExpenseReportView.vue
+│       │   │   ├── EditExpenseReportView.vue
+│       │   │   ├── ExpenseReportDetailView.vue
+│       │   │   ├── AddExpenseView.vue
+│       │   │   ├── ApprovalsView.vue
+│       │   │   └── CategoriesView.vue
 │       │   ├── router/
 │       │   │   └── index.ts     # Rotas da aplicação
 │       │   ├── stores/          # Pinia stores
 │       │   │   ├── auth.ts
 │       │   │   ├── company.ts
-│       │   │   ├── expense.ts
-│       │   │   └── approval.ts
-│       │   ├── services/        # Serviços
-│       │   │   ├── pocketbase.ts
-│       │   │   ├── ocr.ts
-│       │   │   └── upload.ts
-│       │   ├── composables/     # Composables Vue
-│       │   │   ├── useUpload.ts
-│       │   │   └── useNotification.ts
-│       │   ├── types/           # TypeScript types
-│       │   │   ├── company.ts
-│       │   │   ├── expense.ts
-│       │   │   └── user.ts
-│       │   └── utils/           # Utilitários
-│       │       ├── formatters.ts
-│       │       └── validators.ts
+│       │   │   └── expenses.ts
+│       │   └── services/        # Serviços
+│       │       └── pocketbase.ts
 │
 ├── pocketbase/
 │   ├── pb_hooks/                # Hooks do PocketBase
-│   │   ├── main.pb.js           # Routing SPA
-│   │   ├── ocr_processor.pb.js  # Processamento OCR
-│   │   ├── notifications.pb.js  # Sistema de notificações
-│   │   └── audit.pb.js          # Logging de auditoria
+│   │   ├── main.pb.js           # Roteamento SPA + endpoints customizados
+│   │   ├── hooksExpenseReports.pb.js  # Workflow de relatórios + limite FREE
+│   │   ├── hooksApprovalActions.pb.js # Validações de aprovação
+│   │   ├── hooksCategories.pb.js      # CRUD de categorias
+│   │   ├── hooksCompanies.pb.js       # Lifecycle de empresas + categorias padrão
+│   │   ├── hooksCompanyUsers.pb.js    # Gestão de membros
+│   │   └── hooksExpenseItems.pb.js    # Cálculo de km e validações
 │   ├── pb_migrations/           # Migrations do banco
-│   │   └── 1234567890_initial_schema.js
 │   └── pb_public/               # Arquivos servidos
 │
 ├── docs/                        # Documentação
 │   ├── PRD.md                   # Product Requirements Document
 │   ├── IMPLEMENTATION.md        # Este arquivo
 │   ├── API.md                   # Documentação da API
-│   └── DEPLOYMENT.md            # Guia de deployment
+│   ├── USER_STORIES.md          # Histórias de usuário por papel
+│   └── README.md                # Índice da documentação
 │
 └── scripts/                     # Scripts auxiliares
     ├── pocketbase.js
     ├── copy-landing.js
-    ├── copy-app.js
-    └── seed-dev-data.js         # Seed dados de desenvolvimento
+    └── copy-app.js
 ```
 
 ## 2. Setup Inicial
@@ -110,27 +88,29 @@ cp apps/landing/.env.example apps/landing/.env.local
 1. **Criar Collections via Admin UI** (http://localhost:8090/_/)
    - Ou usar migrations em `pb_migrations/`
 
-2. **Configurar Collections:**
-   - Companies
-   - Users (já existe)
-   - Company_Users
-   - Approvers
-   - Expense_Reports
-   - Expense_Items
-   - Categories
-   - Audit_Logs
+2. **Collections implementadas:**
+   - users (built-in PocketBase)
+   - companies
+   - company_users
+   - expense_reports
+   - expense_items
+   - categories
+   - approval_actions
+   - system_variables
 
-3. **Configurar Rules de Acesso:**
-   - Ver seção 3.3 para exemplos
+3. **Configurar chave de API para OCR:**
+   - Acesse PocketBase Admin UI → Collections → system_variables
+   - Crie um registro com `key=OPENROUTER_API_KEY` e `value=<sua-chave>`
 
 ### 2.3 Configuração de Variáveis de Ambiente
 
 **apps/web/.env.local:**
 ```env
 VITE_POCKETBASE_URL=http://localhost:8090
-VITE_OPENAI_API_KEY=sk-...
 VITE_APP_NAME=Reembolso Inteligente
 ```
+
+> **Chave de API de IA:** A chave do OpenRouter **não** é uma variável de ambiente do frontend. Ela é armazenada na collection `system_variables` do PocketBase e acessada apenas server-side pelos hooks.
 
 **apps/landing/.env.local:**
 ```env
@@ -282,98 +262,63 @@ const handleFileChange = async (event: Event) => {
 
 ### 3.4 Módulo de OCR/IA
 
-**Responsável:** AI/ML Engineer  
-**Estimativa:** 7 dias  
+**Responsável:** Backend Developer  
+**Status:** ✅ Implementado  
 **Dependências:** Módulo de Despesas
 
-**Tarefas:**
-- [ ] Integração com OpenAI GPT-4 Vision
-- [ ] Hook de processamento assíncrono
-- [ ] Parsing de resposta da IA
-- [ ] Tratamento de erros
-- [ ] Sistema de retry
-- [ ] Logging e métricas
+**Como funciona:**
+1. Frontend converte imagem para base64 e envia para `POST /api/ai/read-receipt`
+2. Hook em `main.pb.js` chama o OpenRouter com a imagem e um prompt estruturado
+3. Resposta JSON é retornada diretamente ao frontend (fluxo **síncrono**)
+4. Frontend pré-preenche o formulário; usuário revisa e corrige se necessário
+5. Usuário salva o item de despesa com a imagem via `POST /api/collections/expense_items/records`
 
-**Hook OCR (exemplo):**
+**Endpoint OCR (main.pb.js):**
 ```javascript
-// pocketbase/pb_hooks/ocr_processor.pb.js
-onRecordCreate((e) => {
-  const collection = e.record.collection().name
-  
-  if (collection !== "expense_items") return
-  
-  const item = e.record
-  const imageUrl = item.get("receipt_image")
-  
-  if (!imageUrl) return
-  
-  // Processa OCR de forma assíncrona
-  processOCR(item.id, imageUrl)
-})
+// pocketbase/pb_hooks/main.pb.js
+routerAdd("POST", "/api/ai/read-receipt", (e) => {
+  // Lê chave da API de system_variables
+  const apiKeyRecord = $app.findFirstRecordByFilter(
+    "system_variables", "key='OPENROUTER_API_KEY'"
+  )
+  if (!apiKeyRecord) {
+    return e.json(500, { message: "API key não configurada." })
+  }
+  const apiKey = apiKeyRecord.get("value")
 
-function processOCR(itemId, imageUrl) {
-  const fullImageUrl = `${$app.settings().meta.appUrl}/api/files/${imageUrl}`
-  
-  // Chama OpenAI Vision API
+  const body = e.requestInfo().body
+  const imageBase64 = body.image
+
   const response = $http.send({
-    url: "https://api.openai.com/v1/chat/completions",
+    url: "https://openrouter.ai/api/v1/chat/completions",
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+      "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      model: "gpt-4-vision-preview",
+      model: "google/gemini-flash-1.5",
       messages: [{
         role: "user",
         content: [
-          {
-            type: "text",
-            text: `Analise este cupom fiscal brasileiro e extraia as seguintes informações em formato JSON:
-            - valor_total: valor total da compra (número)
-            - data: data da compra (YYYY-MM-DD)
-            - hora: hora da compra (HH:MM)
-            - estabelecimento: nome do estabelecimento
-            - categoria: categoria sugerida (food, transport, lodging, supplies, other)
-            - itens: lista de itens (opcional)
-            
-            Retorne apenas o JSON, sem explicações.`
-          },
-          {
-            type: "image_url",
-            image_url: { url: fullImageUrl }
-          }
+          { type: "text", text: "Extraia os dados deste cupom fiscal em JSON: valor_total, data, hora, estabelecimento, categoria, itens" },
+          { type: "image_url", image_url: { url: imageBase64 } }
         ]
-      }],
-      max_tokens: 500
+      }]
     })
   })
-  
-  if (response.statusCode === 200) {
-    const data = JSON.parse(response.raw)
-    const ocrText = data.choices[0].message.content
-    
-    try {
-      const ocrData = JSON.parse(ocrText)
-      
-      // Atualiza o item com os dados extraídos
-      const item = $app.findRecordById("expense_items", itemId)
-      item.set("amount", Math.round(ocrData.valor_total * 100))
-      item.set("date", `${ocrData.data}T${ocrData.hora}:00Z`)
-      item.set("merchant", ocrData.estabelecimento)
-      item.set("category", ocrData.categoria)
-      item.set("ocr_data", ocrData)
-      item.set("ocr_confidence", 0.9)
-      item.set("ocr_processed", true)
-      
-      $app.save(item)
-      
-      console.log(`OCR processado para item ${itemId}`)
-    } catch (error) {
-      console.error(`Erro ao parsear OCR: ${error}`)
-    }
+
+  if (response.statusCode !== 200) {
+    return e.json(500, { message: "Erro ao processar imagem com IA." })
   }
-}
+
+  try {
+    const ocrData = JSON.parse(JSON.parse(response.raw).choices[0].message.content)
+    return e.json(200, ocrData)
+  } catch (err) {
+    return e.json(500, { message: "Erro ao interpretar resposta da IA." })
+  }
+}, $apis.requireAuth())
 ```
 
 ### 3.5 Módulo de Aprovações
