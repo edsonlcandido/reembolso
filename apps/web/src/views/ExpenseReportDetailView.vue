@@ -24,9 +24,19 @@
               <span :class="statusBadgeClass(report.status)" class="px-4 py-2 rounded-full text-sm font-semibold">
                 {{ statusLabel(report.status) }}
               </span>
-              <span class="text-2xl font-bold text-white">
-                {{ formatCurrency(report.total_amount || 0) }}
-              </span>
+              <div class="text-right">
+                <span class="text-2xl font-bold text-white">
+                  {{ formatCurrency(report.total_amount || 0) }}
+                </span>
+                <template v-if="report.advance_amount">
+                  <p class="text-blue-100 text-xs mt-0.5">
+                    Adiantamento: {{ formatCurrency(report.advance_amount) }}
+                  </p>
+                  <p v-if="balanceInfo" class="text-xs font-semibold mt-0.5" :class="balanceInfo.colorClass">
+                    {{ balanceInfo.label }}
+                  </p>
+                </template>
+              </div>
             </div>
           </div>
         </div>
@@ -238,9 +248,22 @@
                   <option v-else disabled value="">Nenhuma categoria cadastrada</option>
                 </select>
               </div>
+              <div v-if="isKmCategory">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Quilômetros (km) <span class="text-red-500">*</span></label>
+                <input v-model="itemForm.km" type="number" step="0.1" min="0" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" placeholder="Ex: 150" />
+                <p v-if="companyStore.currentCompany?.km_rate" class="mt-1 text-xs text-gray-500">
+                  Taxa: R$ {{ Number(companyStore.currentCompany.km_rate).toFixed(2).replace('.', ',') }}/km
+                </p>
+                <p v-else class="mt-1 text-xs text-amber-600">Taxa por km não configurada na empresa.</p>
+              </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
-                <input v-model="itemForm.amountDisplay" type="number" step="0.01" min="0" required class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" placeholder="0,00" />
+                <input v-model="itemForm.amountDisplay" type="number" step="0.01" min="0" required
+                  :readonly="isKmCategory"
+                  class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                  :class="{ 'bg-gray-50 cursor-not-allowed': isKmCategory }"
+                  placeholder="0,00" />
+                <p v-if="isKmCategory" class="mt-1 text-xs text-gray-500">Calculado automaticamente: km × taxa/km</p>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Estabelecimento</label>
@@ -311,6 +334,7 @@
                     </div>
                     <p v-if="item.merchant" class="text-sm text-gray-600">{{ item.merchant }}</p>
                     <p v-if="item.description" class="text-sm text-gray-500">{{ item.description }}</p>
+                    <p v-if="item.km" class="text-xs text-emerald-600 mt-0.5">🛣️ {{ item.km }} km</p>
                     <p v-if="item.date" class="text-xs text-gray-400 mt-1">{{ new Date(item.date).toLocaleDateString('pt-BR') }}</p>
                   </div>
                 </div>
@@ -630,9 +654,21 @@
                 <option v-else disabled value="">Nenhuma categoria cadastrada</option>
               </select>
             </div>
+            <div v-if="isEditKmCategory">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Quilômetros (km) <span class="text-red-500">*</span></label>
+              <input v-model="editItemForm.km" type="number" step="0.1" min="0" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" placeholder="Ex: 150" />
+              <p v-if="companyStore.currentCompany?.km_rate" class="mt-1 text-xs text-gray-500">
+                Taxa: R$ {{ Number(companyStore.currentCompany.km_rate).toFixed(2).replace('.', ',') }}/km
+              </p>
+            </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
-              <input v-model="editItemForm.amountDisplay" type="number" step="0.01" min="0" required class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" placeholder="0,00" />
+              <input v-model="editItemForm.amountDisplay" type="number" step="0.01" min="0" required
+                :readonly="isEditKmCategory"
+                class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                :class="{ 'bg-gray-50 cursor-not-allowed': isEditKmCategory }"
+                placeholder="0,00" />
+              <p v-if="isEditKmCategory" class="mt-1 text-xs text-gray-500">Calculado automaticamente: km × taxa/km</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Estabelecimento</label>
@@ -673,7 +709,7 @@
 import { useExpensesStore } from '../stores/expenses'
 import { useCompanyStore } from '../stores/company'
 import { useRoute, useRouter } from 'vue-router'
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import pb from '../services/pocketbase'
 import { PlusIcon, TrashIcon, ClipboardDocumentListIcon, PencilIcon, EyeIcon, XMarkIcon, ArrowTopRightOnSquareIcon } from '@heroicons/vue/24/outline'
 import type { RecordModel } from 'pocketbase'
@@ -713,6 +749,7 @@ const editItemForm = ref({
   merchant: '',
   description: '',
   notes: '',
+  km: '',
 })
 
 const itemForm = ref({
@@ -722,9 +759,62 @@ const itemForm = ref({
   merchant: '',
   description: '',
   notes: '',
+  km: '',
 })
 
 const report = computed(() => expensesStore.currentReport)
+
+// Detect if the selected category is "Kilometragem" (inline add form)
+const isKmCategory = computed(() => {
+  if (!itemForm.value.category) return false
+  const cat = categories.value.find(c => c.id === itemForm.value.category)
+  return cat?.name?.toLowerCase() === 'kilometragem'
+})
+
+// Detect if edit item category is "Kilometragem"
+const isEditKmCategory = computed(() => {
+  if (!editItemForm.value.category) return false
+  const cat = categories.value.find(c => c.id === editItemForm.value.category)
+  return cat?.name?.toLowerCase() === 'kilometragem'
+})
+
+// Auto-calculate amount for inline add form
+watch([() => itemForm.value.km, isKmCategory], () => {
+  if (!isKmCategory.value) return
+  const km = parseFloat(itemForm.value.km || '0')
+  const kmRate = companyStore.currentCompany?.km_rate ?? 0
+  if (km > 0 && kmRate > 0) {
+    itemForm.value.amountDisplay = (km * kmRate).toFixed(2)
+  } else {
+    itemForm.value.amountDisplay = ''
+  }
+})
+
+// Auto-calculate amount for edit form
+watch([() => editItemForm.value.km, isEditKmCategory], () => {
+  if (!isEditKmCategory.value) return
+  const km = parseFloat(editItemForm.value.km || '0')
+  const kmRate = companyStore.currentCompany?.km_rate ?? 0
+  if (km > 0 && kmRate > 0) {
+    editItemForm.value.amountDisplay = (km * kmRate).toFixed(2)
+  } else {
+    editItemForm.value.amountDisplay = ''
+  }
+})
+
+// Balance: advance_amount - total_amount (positive = employee must return, negative = company owes)
+const balance = computed(() => {
+  if (!report.value || !report.value.advance_amount) return null
+  return (report.value.advance_amount || 0) - (report.value.total_amount || 0)
+})
+
+const balanceInfo = computed(() => {
+  if (balance.value == null) return null
+  if (balance.value >= 0) {
+    return { label: `Devolver: ${formatCurrency(balance.value)}`, colorClass: 'text-amber-300' }
+  }
+  return { label: `A receber: ${formatCurrency(-balance.value)}`, colorClass: 'text-green-300' }
+})
 
 const isApprover = computed(() =>
   companyStore.currentUserRole === 'admin' || companyStore.currentUserRole === 'approver'
@@ -939,7 +1029,7 @@ async function analyzeWithAI() {
 }
 
 function resetItemForm() {
-  itemForm.value = { date: '', category: '', amountDisplay: '', merchant: '', description: '', notes: '' }
+  itemForm.value = { date: '', category: '', amountDisplay: '', merchant: '', description: '', notes: '', km: '' }
   receiptFile.value = null
   if (fileInputRef.value) fileInputRef.value.value = ''
   if (cameraInputRef.value) cameraInputRef.value.value = ''
@@ -966,6 +1056,7 @@ async function handleAddItem() {
     merchant: itemForm.value.merchant || undefined,
     description: itemForm.value.description || undefined,
     notes: itemForm.value.notes || undefined,
+    km: isKmCategory.value && itemForm.value.km ? parseFloat(itemForm.value.km) : undefined,
   }
 
   try {
@@ -1026,6 +1117,7 @@ function openEditItemModal(item: RecordModel) {
     merchant: item.merchant || '',
     description: item.description || '',
     notes: item.notes || '',
+    km: item.km ? String(item.km) : '',
   }
   showEditItemModal.value = true
 }
@@ -1055,6 +1147,7 @@ async function handleUpdateItem() {
       merchant: editItemForm.value.merchant || undefined,
       description: editItemForm.value.description || undefined,
       notes: editItemForm.value.notes || undefined,
+      km: isEditKmCategory.value && editItemForm.value.km ? parseFloat(editItemForm.value.km) : undefined,
     })
     if (result.success) {
       successMsg.value = 'Despesa atualizada com sucesso!'

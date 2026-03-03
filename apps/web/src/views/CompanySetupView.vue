@@ -91,6 +91,19 @@
           />
         </div>
 
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Valor reembolsável por km (R$)</label>
+          <input
+            v-model="form.km_rate"
+            type="number"
+            step="0.01"
+            min="0"
+            class="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+            placeholder="Ex: 0.60"
+          />
+          <p class="mt-1 text-sm text-gray-500">Usado para calcular automaticamente despesas de quilometragem</p>
+        </div>
+
         <div class="flex gap-4 pt-4">
           <button
             type="submit"
@@ -234,6 +247,7 @@ const form = ref({
   email: '',
   phone: '',
   address: '',
+  km_rate: '',
 })
 
 function maskCnpj(e: Event) {
@@ -317,6 +331,7 @@ async function handleSubmit() {
     email: form.value.email || undefined,
     phone: form.value.phone || undefined,
     address: form.value.address || undefined,
+    km_rate: form.value.km_rate !== '' ? parseFloat(form.value.km_rate) : undefined,
   }
 
   let result
@@ -348,6 +363,7 @@ onMounted(async () => {
       form.value.email = company.email || ''
       form.value.phone = company.phone || ''
       form.value.address = company.address || ''
+      form.value.km_rate = company.km_rate != null ? String(company.km_rate) : ''
 
       // Load billing data for admins
       if (companyStore.currentUserRole === 'admin') {

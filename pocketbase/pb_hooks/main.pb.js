@@ -27,6 +27,7 @@ onRecordAfterCreateSuccess((e) => {
     { name: "Transporte", icon: "🚗", color: "#3b82f6" },
     { name: "Hospedagem", icon: "🏨", color: "#8b5cf6" },
     { name: "Material", icon: "📦", color: "#eab308" },
+    { name: "Kilometragem", icon: "🛣️", color: "#10b981" },
     { name: "Outros", icon: "📁", color: "#6b7280" },
   ]
 
@@ -77,6 +78,7 @@ routerAdd("POST", "/api/companies/create", (e) => {
     if (body.email) company.set("email", body.email)
     if (body.phone) company.set("phone", body.phone)
     if (body.address) company.set("address", body.address)
+    if (body.km_rate != null) company.set("km_rate", body.km_rate)
     company.set("active", true)
     $app.save(company)
   } catch (err) {

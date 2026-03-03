@@ -108,6 +108,19 @@
           />
         </div>
 
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Adiantamento (R$)</label>
+          <input
+            v-model="form.advance_amount"
+            type="number"
+            step="0.01"
+            min="0"
+            class="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+            placeholder="0,00"
+          />
+          <p class="mt-1 text-sm text-gray-500">Valor adiantado pela empresa. O saldo será abatido conforme as despesas forem lançadas.</p>
+        </div>
+
         <div class="flex gap-4 pt-4">
           <button
             type="submit"
@@ -166,6 +179,7 @@ const form = ref({
   cost_center: '',
   project: '',
   description: '',
+  advance_amount: '',
 })
 
 onMounted(() => {
@@ -197,6 +211,7 @@ async function handleSubmit() {
   if (form.value.cost_center) data.cost_center = form.value.cost_center
   if (form.value.project) data.project = form.value.project
   if (form.value.description) data.description = form.value.description
+  if (form.value.advance_amount !== '') data.advance_amount = Math.round(parseFloat(form.value.advance_amount) * 100)
 
   const result = await expensesStore.createReport(data)
   if (result.success && result.data) {
