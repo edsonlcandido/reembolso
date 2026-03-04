@@ -328,9 +328,9 @@ GET /api/collections/approval_actions/records
 **Valores possíveis para `action`:**
 - `approve` — Relatório aprovado
 - `reject` — Relatório rejeitado
+- `return_for_revision` — Relatório devolvido para ajustes do funcionário
 - `forward` — Encaminhado para outro aprovador (campo `forwarded_to` preenchido)
 - `pay` — Relatório marcado como pago integralmente
-- `partially_pay` — Um ou mais itens marcados como pagos
 
 #### 4.2 Criar Ação de Aprovação
 ```http
@@ -357,6 +357,17 @@ POST /api/collections/approval_actions/records
   "action": "forward",
   "forwarded_to": "user999",
   "notes": "Encaminhando para o gestor do projeto."
+}
+```
+
+**Body para devolução para revisão:**
+```json
+{
+  "report": "rep123",
+  "company": "comp123",
+  "user": "user789",
+  "action": "return_for_revision",
+  "notes": "Ajustar descrição e comprovante de duas despesas."
 }
 ```
 
@@ -397,7 +408,6 @@ GET /api/collections/expense_reports/records
       "submitted_to": "user789",
       "approved_by": null,
       "approved_at": null,
-      "rejection_reason": null,
       "created": "2026-01-15 14:00:00.000Z",
       "updated": "2026-01-21 10:00:00.000Z"
     }
@@ -405,7 +415,7 @@ GET /api/collections/expense_reports/records
 }
 ```
 
-> **Valores possíveis para `status`:** `draft`, `submitted`, `approved`, `rejected`, `paid`, `partially_paid`.  
+> **Valores possíveis para `status`:** `draft`, `submitted`, `approved`, `rejected`, `paid`.  
 > **Campo `advance_amount`:** Valor de adiantamento já recebido pelo funcionário (em centavos).  
 > **Campo `submitted_to`:** Referência ao usuário aprovador para quem o relatório foi enviado.
 
@@ -491,7 +501,25 @@ POST /api/collections/approval_actions/records
 }
 ```
 
-> A mudança de status para `rejected` e o preenchimento de `rejection_reason` são feitos pelo frontend após criar a ação com `action=reject`.
+> A mudança de status para `rejected` é feita pelo frontend após criar a ação com `action=reject`.
+
+#### 5.6 Devolver Relatório para Revisão
+```http
+POST /api/collections/approval_actions/records
+```
+
+**Body:**
+```json
+{
+  "report": "rep123",
+  "company": "comp123",
+  "user": "user789",
+  "action": "return_for_revision",
+  "notes": "Corrigir valor e anexo da despesa de transporte."
+}
+```
+
+> Após a ação `return_for_revision`, o relatório retorna para `draft`, o funcionário ajusta as despesas e deve reenviar (`status=submitted`) para reiniciar o fluxo de aprovação.
 
 ---
 

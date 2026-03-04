@@ -481,12 +481,11 @@ Com o avanço de tecnologias de IA e OCR, há uma oportunidade clara de:
   description: text
   total_amount: number      // calculado automaticamente (centavos)
   advance_amount: number    // adiantamento já recebido pelo funcionário (centavos)
-  status: select(draft, submitted, approved, rejected, paid, partially_paid)
+  status: select(draft, submitted, approved, rejected, paid)
   submitted_at: datetime
   submitted_to: relation(users)   // aprovador destinatário
   approved_by: relation(users)
   approved_at: datetime
-  rejection_reason: text
   created: datetime
   updated: datetime
 }
@@ -523,7 +522,7 @@ Com o avanço de tecnologias de IA e OCR, há uma oportunidade clara de:
   report: relation(expense_reports)
   company: relation(companies)
   user: relation(users)           // quem realizou a ação
-  action: select(approve, reject, forward, pay, partially_pay)
+  action: select(approve, reject, return_for_revision, forward, pay)
   notes: text
   forwarded_to: relation(users)   // preenchido quando action=forward
   created: datetime
@@ -592,7 +591,7 @@ onRecordUpdateRequest((e) => {
 ```javascript
 // Impede que o aprovador que aprovou o relatório também faça o pagamento
 onRecordCreateRequest((e) => {
-  if (action == "pay" || action == "partially_pay") {
+  if (action == "pay") {
     // Valida que o usuário não é o mesmo que aprovou
   }
 })

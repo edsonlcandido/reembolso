@@ -180,7 +180,7 @@ Como **funcionário**, eu quero **visualizar quais itens do meu relatório já f
 
 **Critérios de Aceitação:**
 - Cada item indica se foi pago, por quem e quando
-- Relatório exibe status "Pago" ou "Parcialmente Pago"
+- Relatório exibe status "Aprovado" (aguardando pagamento) ou "Pago"
 
 ---
 
@@ -243,6 +243,7 @@ Como **aprovador**, eu quero **devolver um relatório para que o funcionário fa
 - Opção de "Devolver para Revisão" disponível em relatórios "Enviados"
 - Campo obrigatório para indicar o que deve ser ajustado
 - Status retorna para "Rascunho" permitindo edição pelo funcionário
+- Após ajustes, o funcionário deve reenviar o relatório para um aprovador
 - Ação registrada no histórico
 
 ---
@@ -259,17 +260,7 @@ Como **aprovador**, eu quero **encaminhar um relatório para outro aprovador** p
 
 ### Pagamento
 
-**US-A07 — Marcar item de despesa como pago**  
-Como **aprovador**, eu quero **marcar itens individuais de um relatório como pagos** para que **o sistema reflita o pagamento parcial e o funcionário saiba o que já recebeu.**
-
-**Critérios de Aceitação:**
-- Ação disponível em relatórios com status "Aprovado"
-- Cada item pode ser marcado individualmente como pago
-- Status do relatório atualiza para "Parcialmente Pago" quando há itens pagos e não pagos
-
----
-
-**US-A08 — Marcar relatório inteiro como pago**  
+**US-A07 — Marcar relatório inteiro como pago**  
 Como **aprovador**, eu quero **marcar o relatório completo como pago de uma vez** para que **o processo de pagamento seja registrado de forma eficiente.**
 
 **Critérios de Aceitação:**
@@ -279,7 +270,7 @@ Como **aprovador**, eu quero **marcar o relatório completo como pago de uma vez
 
 ---
 
-**US-A09 — Ver histórico de aprovações realizadas**  
+**US-A08 — Ver histórico de aprovações realizadas**  
 Como **aprovador**, eu quero **ver o histórico de todas as ações que realizei** para que **eu tenha controle sobre as decisões tomadas.**
 
 **Critérios de Aceitação:**
@@ -446,9 +437,8 @@ Como **admin**, eu quero **saber quantos relatórios foram criados no ciclo atua
 | US-A04 | Rejeitar relatório | ❌ | ✅ | ✅ |
 | US-A05 | Devolver para revisão | ❌ | ✅ | ✅ |
 | US-A06 | Encaminhar para aprovador | ❌ | ✅ | ✅ |
-| US-A07 | Marcar item como pago | ❌ | ✅ | ✅ |
-| US-A08 | Marcar relatório como pago | ❌ | ✅ | ✅ |
-| US-A09 | Ver histórico de aprovações | ❌ | ✅ | ✅ |
+| US-A07 | Marcar relatório como pago | ❌ | ✅ | ✅ |
+| US-A08 | Ver histórico de aprovações | ❌ | ✅ | ✅ |
 | US-AD01 | Criar empresa | ❌ | ❌ | ✅ |
 | US-AD02 | Editar dados da empresa | ❌ | ❌ | ✅ |
 | US-AD03 | Configurar taxa de km | ❌ | ❌ | ✅ |

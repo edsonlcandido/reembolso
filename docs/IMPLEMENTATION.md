@@ -330,7 +330,9 @@ routerAdd("POST", "/api/ai/read-receipt", (e) => {
 **Tarefas:**
 - [ ] Dashboard de aprovações pendentes
 - [ ] Detalhe da aprovação
-- [ ] Ações de aprovar/rejeitar
+- [ ] Ações de aprovar/rejeitar/devolver para revisão
+- [ ] Fluxo de correção: relatório devolvido volta para rascunho e exige reenvio
+- [ ] Pagamento somente integral do relatório (sem pagamento parcial)
 - [ ] Sistema de notificações
 - [ ] Histórico de aprovações
 
