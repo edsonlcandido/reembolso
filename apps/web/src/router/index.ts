@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import pb from '../services/pocketbase'
 import { useCompanyStore } from '../stores/company'
 import LoginView from '../views/LoginView.vue'
+import VerifyEmailView from '../views/VerifyEmailView.vue'
 import CompanyAuthView from '../views/CompanyAuthView.vue'
 import AppLayout from '../layouts/AppLayout.vue'
 import DashboardView from '../views/DashboardView.vue'
@@ -29,6 +30,11 @@ const router = createRouter({
       name: 'login',
       component: LoginView,
       meta: { requiresGuest: true },
+    },
+    {
+      path: '/verify-email',
+      name: 'verify-email',
+      component: VerifyEmailView,
     },
     {
       path: '/companies/:slug',

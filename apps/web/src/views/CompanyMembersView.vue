@@ -177,7 +177,7 @@ async function handleAddMember() {
   errorMsg.value = ''
   const result = await companyStore.addMember(newMemberEmail.value, newMemberRole.value)
   if (result.success) {
-    successMsg.value = 'Membro convidado com sucesso!'
+    successMsg.value = result.message || 'Membro convidado com sucesso!'
     newMemberEmail.value = ''
     newMemberRole.value = 'employee'
     await companyStore.fetchMembers()

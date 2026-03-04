@@ -201,6 +201,7 @@ const mode = ref<Mode>('login')
 const loading = ref(false)
 const error = ref('')
 const successMessage = ref('')
+const registrationEmail = ref('')
 
 const formData = ref({
   name: '',
@@ -289,18 +290,32 @@ async function handleSubmit() {
         formData.value.passwordConfirm,
         formData.value.name
       )
+      
+      if (result.success) {
+        registrationEmail.value = formData.value.email
+        successMessage.value = `Conta criada com sucesso! Um email de verificação foi enviado para ${formData.value.email}. Clique no link para confirmar sua conta.`
+        formData.value = { name: '', email: '', password: '', passwordConfirm: '', emailVisibility: true }
+        mode.value = 'login'
+        
+        // Redirecionar após 5 segundos
+        setTimeout(() => {
+          setMode('login')
+        }, 5000)
+      } else {
+        error.value = result.error || 'Ocorreu um erro'
+      }
     } else {
       result = await authStore.login(
         formData.value.email,
         formData.value.password
       )
-    }
-
-    if (result.success) {
-      await nextTick()
-      await router.push('/dashboard')
-    } else {
-      error.value = result.error || 'Ocorreu um erro'
+      
+      if (result.success) {
+        await nextTick()
+        await router.push('/dashboard')
+      } else {
+        error.value = result.error || 'Ocorreu um erro'
+      }
     }
   } catch (e: any) {
     error.value = e?.message || 'Ocorreu um erro'

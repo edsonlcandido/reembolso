@@ -29,13 +29,36 @@
         </div>
         <div>
           <label class="block text-sm font-semibold text-gray-700 mb-2">E-mail</label>
-          <input
-            :value="authStore.user?.email"
-            type="email"
-            disabled
-            class="appearance-none block w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-500 sm:text-sm cursor-not-allowed"
-          />
+          <div class="flex items-center gap-3">
+            <input
+              :value="authStore.user?.email"
+              type="email"
+              disabled
+              class="appearance-none block flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-500 sm:text-sm cursor-not-allowed"
+            />
+            <div v-if="authStore.user?.verified" class="flex items-center gap-2 px-4 py-3 bg-green-50 rounded-xl border border-green-200">
+              <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+              </svg>
+              <span class="text-xs font-semibold text-green-800">Verificado</span>
+            </div>
+            <div v-else class="flex items-center gap-2 px-4 py-3 bg-yellow-50 rounded-xl border border-yellow-200">
+              <svg class="w-5 h-5 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+              </svg>
+              <span class="text-xs font-semibold text-yellow-800">Não verificado</span>
+            </div>
+          </div>
           <p class="text-xs text-gray-400 mt-1">O e-mail não pode ser alterado por aqui.</p>
+          <button
+            v-if="!authStore.user?.verified"
+            type="button"
+            @click="handleResendVerificationEmail"
+            :disabled="resendingEmail"
+            class="mt-2 text-sm font-semibold text-blue-600 hover:text-blue-700 disabled:opacity-50 transition-colors"
+          >
+            {{ resendingEmail ? 'Reenviando...' : 'Reenviar email de verificação' }}
+          </button>
         </div>
         <div class="flex justify-end">
           <button
@@ -118,6 +141,7 @@ const successMessage = ref('')
 const errorMessage = ref('')
 const savingProfile = ref(false)
 const savingPassword = ref(false)
+const resendingEmail = ref(false)
 
 const profileForm = ref({
   name: '',
@@ -193,6 +217,28 @@ async function handleChangePassword() {
     }
   } finally {
     savingPassword.value = false
+  }
+}
+
+async function handleResendVerificationEmail() {
+  successMessage.value = ''
+  errorMessage.value = ''
+
+  if (!authStore.user?.email) {
+    errorMessage.value = 'E-mail não encontrado.'
+    return
+  }
+
+  resendingEmail.value = true
+  try {
+    const result = await authStore.resendVerificationEmail(authStore.user.email)
+    if (result.success) {
+      successMessage.value = 'Email de verificação reenviado com sucesso! Verifique sua caixa de entrada.'
+    } else {
+      errorMessage.value = result.error || 'Erro ao reenviar email de verificação.'
+    }
+  } finally {
+    resendingEmail.value = false
   }
 }
 </script>
