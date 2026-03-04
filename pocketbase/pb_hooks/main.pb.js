@@ -342,105 +342,90 @@ routerAdd("POST", "/api/billing/close-cycle", (e) => {
 /**
  * Endpoint: Enviar convite de membro para e-mail
  *
- * Envia um email de convite para um usuário que ainda não existe na plataforma.
- * O convite direciona para /app/companies/:slug para registro.
+ * Cria automaticamente um usuário se não existir, adiciona à empresa e
+ * envia email de reset de senha para que o usuário configure sua senha.
  *
  * POST /api/memberships/send-invite
- * Body: { email, companySlug, companyName, role }
+ * Body: { email, companyId, companyName, role }
  * Requires: auth
  */
 routerAdd("POST", "/api/memberships/send-invite", (e) => {
   const body = e.requestInfo().body
   const email = body.email
-  const companySlug = body.companySlug
+  const companyId = body.companyId
   const companyName = body.companyName
   const role = body.role
 
-  if (!email || !companySlug || !companyName) {
-    return e.json(400, { error: "Email, slug da empresa e nome da empresa são obrigatórios" })
+  if (!email || !companyId || !companyName) {
+    return e.json(400, { error: "Email, ID da empresa e nome da empresa são obrigatórios" })
   }
 
   try {
-    // Obter configurações da app
-    const appName = $app.settings().meta.appName || "Reembolso"
-    const appURL = $app.settings().meta.appURL || "http://localhost:3000"
-    const senderAddress = $app.settings().meta.senderAddress
-    const senderName = $app.settings().meta.senderName || appName
-
-    const inviteUrl = appURL + "app/companies/" + encodeURIComponent(companySlug)
+    // 1. Verificar se usuário já existe
+    let user
+    let userAlreadyExists = true
     
-    // Criar mensagem de email customizada com placeholders
-    const mailClient = $app.newMailClient()
-    
-    const message = new MailerMessage({
-      from: {
-        address: senderAddress,
-        name: senderName,
-      },
-      to: [{ address: email }],
-      subject: appName + " - Acesse a plataforma",
-      html: `
-        <p>Olá,</p>
-        <p>Você recebeu um convite para se cadastrar na plataforma <strong>${companyName}</strong>.</p>
-        <p>Clique no botão abaixo para acessar a plataforma e criar seu registro.</p>
-        <p>
-          <a class="btn" href="${inviteUrl}" target="_blank" rel="noopener" style="display: inline-block; padding: 12px 24px; background-color: #2563eb; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">
-            Acessar Plataforma
-          </a>
-        </p>
-        <p style="margin-top: 32px; color: #666;">
-          Obrigado,<br/>
-          Equipe ${appName}
-        </p>
-      `,
-    })
-
-    // Enviar email
-    mailClient.send(message)
-
-    // Encontrar a empresa pelo slug
-    let company
     try {
-      const companies = $app.findRecordsByFilter(
-        "companies",
-        `slug = "${companySlug}"`,
-        "",
-        1,
-        0
-      )
-      if (companies && companies.length > 0) {
-        company = companies[0]
-      }
-    } catch (err) {
-      console.log("Erro ao encontrar empresa:", err)
+      user = $app.findFirstRecordByData("users", "email", email)
+    } catch (notFoundErr) {
+      // Usuário não existe, vamos criar
+      userAlreadyExists = false
     }
 
-    // Criar registro de convite para rastreamento
-    if (company) {
+    // 2. Se usuário não existe, criar com senha aleatória
+    if (!userAlreadyExists) {
       try {
-        const invitesCol = $app.findCollectionByNameOrId("company_invites")
-        const invite = new Record(invitesCol)
-        invite.set("company", company.id)
-        invite.set("email", email)
-        invite.set("role", role)
-        invite.set("status", "pending")
-        invite.set("invited_at", new Date().toISOString().split("T")[0])
+        const tempPassword = $security.randomString(20)
+        const usersCol = $app.findCollectionByNameOrId("_pb_users_auth_")
+        user = new Record(usersCol)
+        user.set("email", email)
+        user.set("password", tempPassword)
+        user.set("passwordConfirm", tempPassword)
+        user.set("name", email.split("@")[0])
+        user.set("emailVisibility", true)
+        user.set("verified", true)
         
-        // Expirado após 7 dias
-        const expiresAt = new Date()
-        expiresAt.setDate(expiresAt.getDate() + 7)
-        invite.set("expires_at", expiresAt.toISOString().split("T")[0])
-        
-        $app.save(invite)
-      } catch (saveErr) {
-        console.log("Erro ao salvar convite:", saveErr)
-        // Não bloquear o fluxo se não conseguir salvar o registro
+        $app.save(user)
+      } catch (createErr) {
+        console.log("Erro ao criar usuário:", createErr)
+        return e.json(500, { error: "Erro ao criar usuário: " + String(createErr) })
       }
     }
 
-    return e.json(200, { success: true, message: "Convite enviado com sucesso" })
+    // 3. Adicionar usuário à empresa
+    try {
+      const companyUsersCol = $app.findCollectionByNameOrId("company_users")
+      const membership = new Record(companyUsersCol)
+      membership.set("company", companyId)
+      membership.set("user", user.id)
+      membership.set("role", role)
+      membership.set("active", true)
+      
+      $app.save(membership)
+    } catch (membershipErr) {
+      console.log("Erro ao adicionar membro:", membershipErr)
+      return e.json(500, { error: "Erro ao adicionar membro à empresa: " + String(membershipErr) })
+    }
+
+    // 4. Enviar email de reset de senha (template nativo do PocketBase)
+    try {
+      $mails.sendRecordPasswordReset($app, user)
+    } catch (mailErr) {
+      console.log("Erro ao enviar email de reset:", mailErr)
+      // Não bloquear o fluxo se email falhar
+    }
+
+    const message = userAlreadyExists 
+      ? "Membro adicionado com sucesso! Email de configuração enviado."
+      : "Usuário criado e adicionado à empresa. Email de configuração de senha enviado."
+
+    return e.json(200, { 
+      success: true, 
+      message,
+      userCreated: !userAlreadyExists 
+    })
   } catch (err) {
-    console.log("Erro ao enviar email de convite:", err)
-    return e.json(500, { error: "Erro ao enviar email de convite: " + String(err) })
+    console.log("Erro no convite de membro:", err)
+    return e.json(500, { error: "Erro ao processar convite: " + String(err) })
   }
 }, $apis.requireAuth())

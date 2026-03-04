@@ -145,24 +145,28 @@ export const useCompanyStore = defineStore('company', () => {
         return { success: true, message: 'Membro adicionado com sucesso!' }
       }
 
-      // Se usuário não existe, enviar email de convite
+      // Se usuário não existe, criar usuário e enviar email de reset de senha
       if (!userFound) {
         try {
-          await pb.send('/api/memberships/send-invite', {
+          const result = await pb.send('/api/memberships/send-invite', {
             method: 'POST',
             body: JSON.stringify({
               email,
-              companySlug: currentCompany.value.slug,
+              companyId: currentCompany.value.id,
               companyName: currentCompany.value.name,
               role,
             }),
             headers: { 'Content-Type': 'application/json' },
           })
 
-          return { success: true, message: `Convite enviado para ${email}. O usuário receberá um email para se cadastrar.` }
+          return { 
+            success: true, 
+            message: result.message || `Usuário criado e adicionado à empresa. Email de configuração de senha enviado para ${email}.` 
+          }
         } catch (inviteErr: any) {
-          console.error('Erro ao enviar convite:', inviteErr)
-          return { success: false, error: 'Usuário não encontrado e erro ao enviar convite. Tente novamente.' }
+          console.error('Erro ao criar usuário e enviar convite:', inviteErr)
+          const serverMessage = inviteErr?.response?.message || inviteErr?.data?.message || inviteErr?.data?.error
+          return { success: false, error: serverMessage || 'Erro ao criar usuário e enviar convite. Tente novamente.' }
         }
       }
 

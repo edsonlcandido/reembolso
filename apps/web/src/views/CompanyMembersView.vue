@@ -65,8 +65,13 @@
             class="flex flex-col sm:flex-row sm:items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all"
           >
             <div class="flex items-center gap-3 flex-1 min-w-0">
-              <div class="w-10 h-10 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+              <div class="relative w-10 h-10 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
                 {{ (member.expand?.user?.name || member.expand?.user?.email || '?')[0].toUpperCase() }}
+                <div
+                  v-if="!member.expand?.user?.verified"
+                  class="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-yellow-400 border-2 border-white"
+                  title="Email não verificado"
+                />
               </div>
               <div class="min-w-0">
                 <p class="font-semibold text-gray-900 truncate">
