@@ -342,8 +342,13 @@ async function handleSubmit() {
   }
 
   if (result.success) {
-    successMsg.value = isEditing.value ? 'Empresa atualizada com sucesso!' : 'Empresa criada com sucesso!'
-    setTimeout(() => router.push('/dashboard'), 1000)
+    const companyId = (result as { success: true; companyId?: string }).companyId
+    if (!isEditing.value && companyId) {
+      router.push({ name: 'companies-edit', params: { id: companyId } })
+    } else {
+      successMsg.value = 'Empresa atualizada com sucesso!'
+      setTimeout(() => router.push('/dashboard'), 1000)
+    }
   } else {
     errorMsg.value = result.error || 'Erro ao salvar empresa.'
   }
