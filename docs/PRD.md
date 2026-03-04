@@ -404,13 +404,16 @@ Com o avanço de tecnologias de IA e OCR, há uma oportunidade clara de:
 {
   id: string
   name: string
+  slug: string           // URL amigável, gerada automaticamente a partir do nome (minúsculas, hífens, único)
   cnpj: string
   email: string
   phone: string
   address: string
   logo: file
-  currency: string (default: BRL)
-  settings: json
+  currency: string       // default: BRL
+  km_rate: number        // valor por km em centavos (ex: 100 centavos = R$ 1,00/km)
+  plan: string           // FREE | PRO
+  billing_anchor_day: number  // dia do mês para início do ciclo de faturamento (1-28); em meses com menos dias usa o último dia
   active: boolean
   created: datetime
   updated: datetime
@@ -440,64 +443,8 @@ Com o avanço de tecnologias de IA e OCR, há uma oportunidade clara de:
   role: select(admin, approver, employee)
   cost_center: string
   active: boolean
-  created: datetime
-  updated: datetime
-}
-```
-
-#### Collection: approvers
-```typescript
-{
-  id: string
-  company: relation(companies)
-  user: relation(users)
-  level: number (1, 2, 3...)
-  max_amount: number
-  delegates_to: relation(users)
-  active: boolean
-  created: datetime
-  updated: datetime
-}
-```
-
-#### Collection: expense_reports
-```typescript
-{
-  id: string
-  company: relation(companies)
-  user: relation(users)
-  title: string
-  period_start: date
-  period_end: date
-  cost_center: string
-  project: string
-  description: text
-  total_amount: number
-  status: select(draft, submitted, approved, rejected, paid)
-  submitted_at: datetime
-  approved_by: relation(users)
-  approved_at: datetime
-  rejection_reason: text
-  created: datetime
-  updated: datetime
-}
-```
-
-#### Collection: expense_items
-```typescript
-{
-  id: string
-  report: relation(expense_reports)
-  date: datetime
-  category: select(food, transport, lodging, supplies, other)
-  amount: number
-  description: text
-  receipt_image: file
-  merchant: string
-  ocr_data: json
-  ocr_confidence: number
-  ocr_processed: boolean
-  notes: text
+  activated_at: datetime    // preenchido automaticamente quando active=true
+  deactivated_at: datetime  // preenchido automaticamente quando active→false
   created: datetime
   updated: datetime
 }
@@ -518,19 +465,68 @@ Com o avanço de tecnologias de IA e OCR, há uma oportunidade clara de:
 }
 ```
 
-#### Collection: audit_logs
+> **Categorias padrão:** Ao criar uma empresa, o sistema cria automaticamente 6 categorias padrão: Alimentação, Transporte, Hospedagem, Material, Quilometragem e Outros. Essas categorias são armazenadas na collection `categories` com os nomes em português. O campo `category` de `expense_items` usa os valores do select (`food`, `transport`, `lodging`, `supplies`, `other`) — as categorias da collection são para agrupamento e exibição customizável.
+
+#### Collection: expense_reports
 ```typescript
 {
   id: string
-  user: relation(users)
   company: relation(companies)
-  action: string
-  entity_type: string
-  entity_id: string
-  changes: json
-  ip_address: string
-  user_agent: string
+  user: relation(users)
+  title: string
+  period_start: date
+  period_end: date
+  cost_center: string
+  project: string
+  description: text
+  total_amount: number      // calculado automaticamente (centavos)
+  advance_amount: number    // adiantamento já recebido pelo funcionário (centavos)
+  status: select(draft, submitted, approved, rejected, paid)
+  submitted_at: datetime
+  submitted_to: relation(users)   // aprovador destinatário
+  approved_by: relation(users)
+  approved_at: datetime
   created: datetime
+  updated: datetime
+}
+```
+
+#### Collection: expense_items
+```typescript
+{
+  id: string
+  report: relation(expense_reports)  // cascadeDelete
+  date: datetime
+  category: select(food, transport, lodging, supplies, other)
+  amount: number          // centavos; calculado automaticamente se km > 0
+  description: text
+  receipt_image: file
+  merchant: string
+  ocr_data: json          // dados extraídos pela IA
+  ocr_confidence: number
+  ocr_processed: boolean
+  notes: text
+  km: number              // km percorridos (para despesas de deslocamento)
+  paid: boolean
+  paid_by: relation(users)
+  paid_at: datetime
+  created: datetime
+  updated: datetime
+}
+```
+
+#### Collection: approval_actions (trilha de auditoria)
+```typescript
+{
+  id: string
+  report: relation(expense_reports)
+  company: relation(companies)
+  user: relation(users)           // quem realizou a ação
+  action: select(approve, reject, return_for_revision, forward, pay)
+  notes: text
+  forwarded_to: relation(users)   // preenchido quando action=forward
+  created: datetime
+  updated: datetime
 }
 ```
 
@@ -541,67 +537,78 @@ sequenceDiagram
     participant U as Usuário
     participant F as Frontend
     participant B as Backend/PocketBase
-    participant Q as Fila de Jobs
-    participant A as Agente LLM
+    participant A as OpenRouter (LLM)
     
     U->>F: Upload foto do cupom
-    F->>B: POST /api/expense-items (imagem)
-    B->>B: Salva imagem
-    B->>Q: Enfileira job OCR
-    B-->>F: 202 Accepted + item_id
-    F-->>U: "Processando cupom..."
-    
-    Q->>A: Processa imagem
-    A->>A: GPT-4 Vision extrai dados
-    A->>B: PATCH /api/expense-items/{id}
-    B->>B: Atualiza com dados extraídos
-    B->>F: SSE notification
-    F-->>U: "Dados extraídos! Revise."
+    F->>B: POST /api/ai/read-receipt (imagem base64)
+    B->>A: Envia imagem + prompt
+    A-->>B: Retorna dados extraídos (JSON)
+    B-->>F: { valor_total, data, hora, estabelecimento, categoria, itens }
+    F-->>U: Pré-preenche formulário com dados extraídos
     
     U->>F: Revisa/corrige dados
     U->>F: Salva item de despesa
-    F->>B: PATCH /api/expense-items/{id}
-    B-->>F: 200 OK
+    F->>B: POST /api/collections/expense_items/records (multipart com imagem)
+    B-->>F: 200 OK + item criado
 ```
 
 ### 6.4 Hooks PocketBase
 
-#### pb_hooks/ocr_processor.pb.js
+Os hooks estão implementados em `pocketbase/pb_hooks/`:
+
+#### main.pb.js — Roteamento SPA e Endpoints Customizados
 ```javascript
-// Hook para processar OCR quando item é criado
-onRecordCreate((e) => {
-  const item = e.record
-  
-  if (item.collection().name === "expense_items" && item.get("receipt_image")) {
-    // Enfileira processamento assíncrono
-    $http.send({
-      url: "http://localhost:3000/api/ocr/process",
-      method: "POST",
-      body: JSON.stringify({
-        item_id: item.id,
-        image_url: item.get("receipt_image")
-      })
-    })
+// Serve o Vue app para todas as rotas /app/*
+routerAdd("GET", "/app/{path...}", $apis.static("pb_public/app", true))
+
+// POST /api/companies/create — cria empresa e vincula admin automaticamente
+routerAdd("POST", "/api/companies/create", (e) => {
+  // Cria company + company_user com role=admin
+})
+
+// POST /api/users/find-by-email — busca usuário por email (server-side)
+routerAdd("POST", "/api/users/find-by-email", (e) => { ... })
+
+// POST /api/ai/read-receipt — OCR síncrono via OpenRouter
+routerAdd("POST", "/api/ai/read-receipt", (e) => {
+  // Lê imagem base64, chama OpenRouter LLM, retorna dados extraídos
+})
+```
+
+#### hooksExpenseReports.pb.js — Workflow de Relatórios
+```javascript
+// Ao submeter relatório: cria approval_action com action=forward
+// Limite FREE: bloqueia submissão se >= 5 relatórios no ciclo
+onRecordUpdateRequest((e) => {
+  if (status muda para "submitted") {
+    // Cria approval_action automático
+    // Verifica limite do plano FREE
   }
 })
 ```
 
-#### pb_hooks/notifications.pb.js
+#### hooksApprovalActions.pb.js — Validações de Aprovação
 ```javascript
-// Hook para enviar notificações
-onRecordUpdate((e) => {
-  const report = e.record
-  
-  if (report.collection().name === "expense_reports") {
-    const oldStatus = e.record.originalCopy().get("status")
-    const newStatus = e.record.get("status")
-    
-    if (oldStatus !== newStatus) {
-      // Envia email/notificação
-      sendNotification(report, newStatus)
-    }
+// Impede que o aprovador que aprovou o relatório também faça o pagamento
+onRecordCreateRequest((e) => {
+  if (action == "pay") {
+    // Valida que o usuário não é o mesmo que aprovou
   }
 })
+```
+
+#### hooksCompanies.pb.js — Empresa
+```javascript
+// Cria 6 categorias padrão ao criar empresa:
+// Alimentação, Transporte, Hospedagem, Material, Quilometragem, Outros
+onRecordAfterCreateSuccess((e) => { ... })
+```
+
+#### hooksExpenseItems.pb.js — Itens de Despesa
+```javascript
+// Calcula amount automaticamente para despesas de km:
+// amount = km × company.km_rate
+onRecordCreateRequest((e) => { ... })
 ```
 
 ---
