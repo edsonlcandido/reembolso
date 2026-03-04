@@ -31,6 +31,7 @@
                 <template v-if="report.advance_amount">
                   <p class="text-blue-100 text-xs mt-0.5">
                     Adiantamento: {{ formatCurrency(report.advance_amount) }}
+                    <span v-if="report.advance_date"> · {{ formatDate(report.advance_date) }}</span>
                   </p>
                   <p v-if="balanceInfo" class="text-xs font-semibold mt-0.5" :class="balanceInfo.colorClass">
                     {{ balanceInfo.label }}
