@@ -6,27 +6,41 @@
  * Quando uma empresa é criada:
  * 1. Define valores padrão de billing/plan (plan=FREE, timezone=America/Sao_Paulo, currency=R$)
  * 2. Define billing_anchor_day como o dia atual (1-28)
+ * 
+ * Usa onRecordBeforeCreate (não Request) para funcionar tanto com API direta
+ * quanto com $app.save() dentro de endpoints customizados
  */
-onRecordBeforeCreateRequest((e) => {
+onRecordBeforeCreate((e) => {
   const record = e.record
 
-  // Define plan como FREE se não definido
-  if (!record.get("plan")) {
+  console.log("[hooksCompanies] Criando empresa - valores antes:", {
+    plan: record.get("plan"),
+    billing_timezone: record.get("billing_timezone"),
+    currency: record.get("currency"),
+    billing_anchor_day: record.get("billing_anchor_day")
+  })
+
+  // Define plan como FREE se não definido ou vazio
+  const currentPlan = record.get("plan")
+  if (!currentPlan || currentPlan === "" || currentPlan === null) {
     record.set("plan", "FREE")
   }
 
-  // Define billing_timezone como America/Sao_Paulo se não definido
-  if (!record.get("billing_timezone")) {
+  // Define billing_timezone como America/Sao_Paulo se não definido ou vazio
+  const currentTimezone = record.get("billing_timezone")
+  if (!currentTimezone || currentTimezone === "" || currentTimezone === null) {
     record.set("billing_timezone", "America/Sao_Paulo")
   }
 
-  // Define currency como R$ se não definido
-  if (!record.get("currency")) {
+  // Define currency como R$ se não definido ou vazio
+  const currentCurrency = record.get("currency")
+  if (!currentCurrency || currentCurrency === "" || currentCurrency === null) {
     record.set("currency", "R$")
   }
 
-  // Define billing_anchor_day como o dia atual (1-28) se não definido
-  if (!record.get("billing_anchor_day")) {
+  // Define billing_anchor_day como o dia atual (1-28) se não definido, 0 ou vazio
+  const currentAnchorDay = record.get("billing_anchor_day")
+  if (!currentAnchorDay || currentAnchorDay === 0 || currentAnchorDay === null) {
     const now = new Date()
     let day = now.getDate()
     // Limita entre 1 e 28
@@ -34,6 +48,13 @@ onRecordBeforeCreateRequest((e) => {
     if (day < 1) day = 1
     record.set("billing_anchor_day", day)
   }
+
+  console.log("[hooksCompanies] Criando empresa - valores depois:", {
+    plan: record.get("plan"),
+    billing_timezone: record.get("billing_timezone"),
+    currency: record.get("currency"),
+    billing_anchor_day: record.get("billing_anchor_day")
+  })
 
   return e.next()
 }, "companies")
