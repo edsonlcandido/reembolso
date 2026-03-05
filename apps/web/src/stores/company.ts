@@ -106,74 +106,25 @@ export const useCompanyStore = defineStore('company', () => {
     if (!currentCompany.value) return { success: false, error: 'Nenhuma empresa selecionada.' }
     loading.value = true
     try {
-      // Tentar encontrar o usuário
-      let userId: string | null = null
-      let userFound = true
-
-      try {
-        const userResult = await pb.send('/api/users/find-by-email', {
-          method: 'POST',
-          body: JSON.stringify({ email }),
-          headers: { 'Content-Type': 'application/json' },
-        })
-        if (userResult && userResult.id) {
-          userId = userResult.id
-        } else {
-          userFound = false
-        }
-      } catch (error: any) {
-        const serverMessage = error?.response?.message || error?.data?.message || error?.data?.error
-        if (error?.status === 404 || serverMessage?.includes('não encontrado')) {
-          userFound = false
-        } else {
-          throw error
-        }
-      }
-
-      if (userFound && !userId) {
-        return { success: false, error: 'Usuário não encontrado com este e-mail.' }
-      }
-
-      // Se usuário existe, adicionar como membro normal
-      if (userId) {
-        await pb.collection('company_users').create({
-          company: currentCompany.value.id,
-          user: userId,
+      const result = await pb.send('/api/memberships/send-invite', {
+        method: 'POST',
+        body: JSON.stringify({
+          email,
+          companyId: currentCompany.value.id,
+          companyName: currentCompany.value.name,
           role,
-          active: true,
-        })
-        return { success: true, message: 'Membro adicionado com sucesso!' }
+        }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+      return {
+        success: true,
+        message: result.message || `Membro adicionado com sucesso! Email de configuração de senha enviado para ${email}.`,
       }
-
-      // Se usuário não existe, criar usuário e enviar email de reset de senha
-      if (!userFound) {
-        try {
-          const result = await pb.send('/api/memberships/send-invite', {
-            method: 'POST',
-            body: JSON.stringify({
-              email,
-              companyId: currentCompany.value.id,
-              companyName: currentCompany.value.name,
-              role,
-            }),
-            headers: { 'Content-Type': 'application/json' },
-          })
-
-          return { 
-            success: true, 
-            message: result.message || `Usuário criado e adicionado à empresa. Email de configuração de senha enviado para ${email}.` 
-          }
-        } catch (inviteErr: any) {
-          console.error('Erro ao criar usuário e enviar convite:', inviteErr)
-          const serverMessage = inviteErr?.response?.message || inviteErr?.data?.message || inviteErr?.data?.error
-          return { success: false, error: serverMessage || 'Erro ao criar usuário e enviar convite. Tente novamente.' }
-        }
-      }
-
-      return { success: false, error: 'Erro ao processar solicitação.' }
-    } catch (error: any) {
-      const serverMessage = error?.response?.message || error?.data?.message || error?.data?.error
-      return { success: false, error: serverMessage || error?.message || 'Erro ao adicionar membro.' }
+    } catch (inviteErr: any) {
+      console.error('Erro ao convidar membro:', inviteErr)
+      const serverMessage = inviteErr?.response?.message || inviteErr?.data?.message || inviteErr?.data?.error
+      return { success: false, error: serverMessage || 'Erro ao convidar membro. Tente novamente.' }
     } finally {
       loading.value = false
     }
