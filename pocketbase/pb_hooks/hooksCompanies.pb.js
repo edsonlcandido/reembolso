@@ -7,10 +7,10 @@
  * 1. Define valores padrão de billing/plan (plan=FREE, timezone=America/Sao_Paulo, currency=R$)
  * 2. Define billing_anchor_day como o dia atual (1-28)
  * 
- * Usa onRecordBeforeCreate (não Request) para funcionar tanto com API direta
+ * Usa onRecordCreate para funcionar tanto com API direta
  * quanto com $app.save() dentro de endpoints customizados
  */
-onRecordBeforeCreate((e) => {
+onRecordCreate((e) => {
   const record = e.record
 
   console.log("[hooksCompanies] Criando empresa - valores antes:", {

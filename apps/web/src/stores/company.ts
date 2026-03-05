@@ -65,7 +65,7 @@ export const useCompanyStore = defineStore('company', () => {
         return { success: false, error: 'Erro ao criar empresa.' }
       }
       await fetchMyCompanies()
-      return { success: true }
+      return { success: true, companyId: response.id as string }
     } catch (error: any) {
       return { success: false, error: error?.message || 'Erro ao criar empresa.' }
     } finally {
@@ -191,6 +191,18 @@ export const useCompanyStore = defineStore('company', () => {
     }
   }
 
+  async function toggleMemberActive(membershipId: string, active: boolean) {
+    loading.value = true
+    try {
+      await pb.collection('company_users').update(membershipId, { active })
+      return { success: true }
+    } catch (error: any) {
+      return { success: false, error: error?.message || 'Erro ao atualizar status do membro.' }
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function removeMember(membershipId: string) {
     loading.value = true
     try {
@@ -234,6 +246,7 @@ export const useCompanyStore = defineStore('company', () => {
     fetchMembers,
     addMember,
     updateMemberRole,
+    toggleMemberActive,
     removeMember,
     getCompanyBySlug,
   }

@@ -90,3 +90,72 @@ onRecordCreateRequest((e) => {
 
   return e.next()
 }, "approval_actions")
+
+/**
+ * Hook: Send email notifications after approval actions
+ *
+ * Sends an email to the relevant user when an approval action is created:
+ * - approve / reject / return_for_revision: notifies the report owner
+ * - forward: notifies the new approver (forwarded_to)
+ */
+onRecordAfterCreateSuccess((e) => {
+  const action = e.record.getString("action")
+  const reportId = e.record.getString("report")
+
+  if (!reportId) return e.next()
+
+  try {
+    const report = $app.findRecordById("expense_reports", reportId)
+    const reportTitle = report.getString("title")
+    const reportUserId = report.getString("user")
+
+    let recipientId = ""
+    let emailSubject = ""
+    let emailBody = ""
+
+    if (action === "approve") {
+      recipientId = reportUserId
+      emailSubject = "Seu relatório foi aprovado"
+      emailBody = `<p>Olá,</p><p>Seu relatório de despesas <strong>${reportTitle}</strong> foi aprovado.</p>`
+    } else if (action === "reject") {
+      recipientId = reportUserId
+      const notes = e.record.getString("notes")
+      emailSubject = "Seu relatório foi rejeitado"
+      emailBody = `<p>Olá,</p><p>Seu relatório de despesas <strong>${reportTitle}</strong> foi rejeitado.</p>${notes ? `<p>Motivo: ${notes}</p>` : ""}`
+    } else if (action === "return_for_revision") {
+      recipientId = reportUserId
+      const notes = e.record.getString("notes")
+      emailSubject = "Seu relatório foi devolvido para revisão"
+      emailBody = `<p>Olá,</p><p>Seu relatório de despesas <strong>${reportTitle}</strong> foi devolvido para revisão.</p>${notes ? `<p>Observação: ${notes}</p>` : ""}`
+    } else if (action === "forward") {
+      recipientId = e.record.getString("forwarded_to")
+      emailSubject = "Relatório aguardando sua aprovação"
+      emailBody = `<p>Olá,</p><p>Um relatório de despesas <strong>${reportTitle}</strong> foi encaminhado para sua aprovação.</p>`
+    }
+
+    if (!recipientId) return e.next()
+
+    const recipient = $app.findRecordById("users", recipientId)
+    const recipientEmail = recipient.getString("email")
+    if (!recipientEmail) return e.next()
+
+    try {
+      const message = new MailerMessage({
+        from: {
+          address: $app.settings().meta.senderAddress,
+          name: $app.settings().meta.senderName,
+        },
+        to: [{ address: recipientEmail }],
+        subject: emailSubject,
+        html: emailBody,
+      })
+      $app.newMailClient().send(message)
+    } catch (mailErr) {
+      console.error("[hooksApprovalActions] Erro ao enviar email:", mailErr)
+    }
+  } catch (err) {
+    console.error("[hooksApprovalActions] Erro ao processar notificação:", err)
+  }
+
+  return e.next()
+}, "approval_actions")

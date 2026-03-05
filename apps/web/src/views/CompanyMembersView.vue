@@ -100,6 +100,16 @@
 
               <button
                 v-if="!isCurrentUser(member)"
+                @click="handleToggleActive(member)"
+                :class="member.active !== false ? 'border-amber-300 text-amber-600 hover:bg-amber-50' : 'border-green-300 text-green-600 hover:bg-green-50'"
+                class="rounded-lg border px-3 py-2 text-sm transition-all"
+                :title="member.active !== false ? 'Desativar usuário' : 'Ativar usuário'"
+              >
+                {{ member.active !== false ? 'Desativar' : 'Ativar' }}
+              </button>
+
+              <button
+                v-if="!isCurrentUser(member)"
                 @click="confirmRemoveMember(member)"
                 class="rounded-lg border border-red-300 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-all"
               >
@@ -188,6 +198,19 @@ async function handleAddMember() {
     await companyStore.fetchMembers()
   } else {
     errorMsg.value = result.error || 'Erro ao convidar membro.'
+  }
+}
+
+async function handleToggleActive(member: RecordModel) {
+  successMsg.value = ''
+  errorMsg.value = ''
+  const newActive = member.active === false
+  const result = await companyStore.toggleMemberActive(member.id, newActive)
+  if (result.success) {
+    successMsg.value = newActive ? 'Usuário ativado com sucesso!' : 'Usuário desativado com sucesso!'
+    await companyStore.fetchMembers()
+  } else {
+    errorMsg.value = result.error || 'Erro ao atualizar status do usuário.'
   }
 }
 
