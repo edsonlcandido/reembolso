@@ -429,3 +429,120 @@ routerAdd("POST", "/api/memberships/send-invite", (e) => {
     return e.json(500, { error: "Erro ao processar convite: " + String(err) })
   }
 }, $apis.requireAuth())
+
+/**
+ * Endpoint: Notificar usuário da etapa atual de um relatório
+ *
+ * Envia um email para o usuário que está na etapa atual do fluxo de aprovação
+ * (campo submitted_to do relatório), avisando que existe um relatório aguardando
+ * sua ação.
+ *
+ * POST /api/expense-reports/notify
+ * Body: { reportId }
+ * Requires: auth
+ */
+routerAdd("POST", "/api/expense-reports/notify", (e) => {
+  const body = e.requestInfo().body
+  const reportId = body.reportId
+
+  if (!reportId) {
+    return e.json(400, { error: "ID do relatório é obrigatório" })
+  }
+
+  let report
+  try {
+    report = $app.findRecordById("expense_reports", reportId)
+  } catch (err) {
+    return e.json(404, { error: "Relatório não encontrado" })
+  }
+
+  const submittedToId = report.getString("submitted_to")
+  if (!submittedToId) {
+    return e.json(400, { error: "Não há usuário na etapa atual para notificar" })
+  }
+
+  // Only the report owner, or admins/approvers of the same company may trigger this
+  const actorId = e.auth && e.auth.id ? e.auth.id : ""
+  const reportUserId = report.getString("user")
+  if (actorId !== reportUserId) {
+    const companyId = report.getString("company")
+    let isAdminOrApprover = false
+    try {
+      const membership = $app.findFirstRecordByFilter(
+        "company_users",
+        `company="${companyId}" && user="${actorId}" && (role="admin" || role="approver") && active=true`
+      )
+      if (membership) isAdminOrApprover = true
+    } catch (_) {}
+    if (!isAdminOrApprover) {
+      return e.json(403, { error: "Sem permissão para notificar neste relatório" })
+    }
+  }
+
+  let targetUser
+  try {
+    targetUser = $app.findRecordById("users", submittedToId)
+  } catch (err) {
+    return e.json(404, { error: "Usuário da etapa atual não encontrado" })
+  }
+
+  const targetEmail = targetUser.getString("email")
+  const targetName = targetUser.getString("name") || targetEmail
+
+  const reportTitle = report.getString("title")
+  const reportStatus = report.getString("status")
+
+  let senderName = "Sistema"
+  try {
+    const senderUser = $app.findRecordById("users", reportUserId)
+    senderName = senderUser.getString("name") || senderUser.getString("email")
+  } catch (_) {}
+
+  // Sanitize user-supplied strings before embedding in HTML
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;")
+  }
+
+  const safeTargetName = escapeHtml(targetName)
+  const safeReportTitle = escapeHtml(reportTitle)
+  const safeSenderName = escapeHtml(senderName)
+  const safeReportId = report.id.replace(/[^a-zA-Z0-9_-]/g, "")
+  const statusLabel = reportStatus === "submitted" ? "aguardando aprovação" : "aguardando ação"
+  const appURL = $app.settings().meta.appURL || ""
+
+  try {
+    const message = new MailerMessage({
+      from: {
+        address: $app.settings().meta.senderAddress,
+        name: $app.settings().meta.senderName,
+      },
+      to: [{ address: targetEmail, name: targetName }],
+      subject: `Relatório de reembolso aguardando sua ação: ${reportTitle}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #2563eb;">Relatório aguardando sua ação</h2>
+          <p>Olá, <strong>${safeTargetName}</strong>!</p>
+          <p>O relatório de reembolso <strong>"${safeReportTitle}"</strong> de <strong>${safeSenderName}</strong> está ${statusLabel} e precisa da sua atenção.</p>
+          <p style="margin: 24px 0;">
+            <a href="${appURL}/app/reports/${safeReportId}"
+               style="background: linear-gradient(to right, #2563eb, #7c3aed); color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">
+              Ver Relatório
+            </a>
+          </p>
+          <p style="color: #6b7280; font-size: 14px;">Se o botão não funcionar, acesse diretamente o sistema de reembolsos.</p>
+        </div>
+      `,
+    })
+    $app.newMailClient().send(message)
+  } catch (mailErr) {
+    console.log("Erro ao enviar email de notificação:", mailErr)
+    return e.json(500, { error: "Erro ao enviar email de notificação: " + String(mailErr) })
+  }
+
+  return e.json(200, { success: true, message: "Notificação enviada para " + targetEmail })
+}, $apis.requireAuth())
