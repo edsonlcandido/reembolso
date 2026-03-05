@@ -13,7 +13,7 @@
           </svg>
         </a>
       </div>
-      <p class="text-primary-200 text-sm mt-6">Grátis por 30 dias. Sem cartão de crédito. Cancele quando quiser.</p>
+      <p class="text-primary-200 text-sm mt-6">Grátis até 5 relatórios/mês. Sem cartão de crédito. Cancele quando quiser.</p>
     </div>
   </section>
 </template>
