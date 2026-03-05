@@ -10,12 +10,26 @@ const authStore = useAuthStore()
 const status = ref<'form' | 'loading' | 'success' | 'redirect-login' | 'error'>('form')
 const errorMessage = ref('')
 const token = ref('')
+const emailFromToken = ref('')
 
 const formData = ref({
-  email: '',
   password: '',
   passwordConfirm: '',
 })
+
+function decodeTokenEmail(jwt: string): string {
+  try {
+    const payload = jwt.split('.')[1]
+    // JWT uses base64url encoding - replace chars before decoding
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/')
+    const decoded = JSON.parse(atob(base64))
+    const email = decoded.email || ''
+    // Basic email format validation before trusting the decoded value
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : ''
+  } catch {
+    return ''
+  }
+}
 
 onMounted(() => {
   token.value = route.query.token as string
@@ -23,12 +37,13 @@ onMounted(() => {
   if (!token.value) {
     status.value = 'error'
     errorMessage.value = 'Token de redefinição não encontrado. Solicite um novo link de recuperação de senha.'
+    return
   }
+
+  emailFromToken.value = decodeTokenEmail(token.value)
 })
 
 function validateForm(): string | null {
-  if (!formData.value.email.trim()) return 'Informe seu e-mail.'
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.value.email)) return 'E-mail inválido.'
   if (!formData.value.password) return 'Informe a nova senha.'
   if (formData.value.password.length < 8) return 'A senha deve ter pelo menos 8 caracteres.'
   if (!formData.value.passwordConfirm) return 'Confirme a nova senha.'
@@ -59,13 +74,16 @@ async function handleSubmit() {
     return
   }
 
-  const loginResult = await authStore.login(formData.value.email, formData.value.password)
+  const loginResult = emailFromToken.value
+    ? await authStore.login(emailFromToken.value, formData.value.password)
+    : { success: false }
 
   if (loginResult.success) {
     status.value = 'success'
     await nextTick()
     router.push({ name: 'dashboard' })
   } else {
+    // Password was reset successfully; redirect to login so the user can sign in manually
     status.value = 'redirect-login'
     setTimeout(() => {
       router.push({ name: 'login' })
@@ -179,15 +197,6 @@ async function handleSubmit() {
               </svg>
               <p class="ml-3 text-sm font-semibold text-red-800">{{ errorMessage }}</p>
             </div>
-          </div>
-
-          <div>
-            <label for="email" class="block text-sm font-semibold text-gray-700 mb-2">
-              E-mail
-            </label>
-            <input id="email" v-model="formData.email" type="email" autocomplete="email" required
-              class="appearance-none block w-full px-4 py-3 border-2 border-gray-300 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all sm:text-sm hover:border-gray-400"
-              placeholder="seu@email.com" />
           </div>
 
           <div>
