@@ -1,6 +1,65 @@
 /// <reference path="../pb_data/types.d.ts" />
 
 /**
+ * Hook: Inicialização de empresa ao criar
+ *
+ * Quando uma empresa é criada:
+ * 1. Define valores padrão de billing/plan (plan=FREE, timezone=America/Sao_Paulo, currency=R$)
+ * 2. Define billing_anchor_day como o dia atual (1-28)
+ * 
+ * Usa onRecordCreate para funcionar tanto com API direta
+ * quanto com $app.save() dentro de endpoints customizados
+ */
+onRecordCreate((e) => {
+  const record = e.record
+
+  console.log("[hooksCompanies] Criando empresa - valores antes:", {
+    plan: record.get("plan"),
+    billing_timezone: record.get("billing_timezone"),
+    currency: record.get("currency"),
+    billing_anchor_day: record.get("billing_anchor_day")
+  })
+
+  // Define plan como FREE se não definido ou vazio
+  const currentPlan = record.get("plan")
+  if (!currentPlan || currentPlan === "" || currentPlan === null) {
+    record.set("plan", "FREE")
+  }
+
+  // Define billing_timezone como America/Sao_Paulo se não definido ou vazio
+  const currentTimezone = record.get("billing_timezone")
+  if (!currentTimezone || currentTimezone === "" || currentTimezone === null) {
+    record.set("billing_timezone", "America/Sao_Paulo")
+  }
+
+  // Define currency como R$ se não definido ou vazio
+  const currentCurrency = record.get("currency")
+  if (!currentCurrency || currentCurrency === "" || currentCurrency === null) {
+    record.set("currency", "R$")
+  }
+
+  // Define billing_anchor_day como o dia atual (1-28) se não definido, 0 ou vazio
+  const currentAnchorDay = record.get("billing_anchor_day")
+  if (!currentAnchorDay || currentAnchorDay === 0 || currentAnchorDay === null) {
+    const now = new Date()
+    let day = now.getDate()
+    // Limita entre 1 e 28
+    if (day > 28) day = 28
+    if (day < 1) day = 1
+    record.set("billing_anchor_day", day)
+  }
+
+  console.log("[hooksCompanies] Criando empresa - valores depois:", {
+    plan: record.get("plan"),
+    billing_timezone: record.get("billing_timezone"),
+    currency: record.get("currency"),
+    billing_anchor_day: record.get("billing_anchor_day")
+  })
+
+  return e.next()
+}, "companies")
+
+/**
  * Hook: Criação de categorias padrão ao criar uma nova empresa
  *
  * Quando uma empresa é criada, as categorias padrão (Alimentação, Transporte,
@@ -44,11 +103,23 @@ onRecordAfterCreateSuccess((e) => {
  * The collection-level updateRule/deleteRule is kept simple (@request.auth.id != "")
  * to avoid the "sql: no rows in result set" 404 caused by complex @collection joins.
  * The actual admin check is done here via a direct DB lookup.
+ * 
+ * Superusers (_superusers) are allowed to bypass company admin check.
  */
 function requireCompanyAdmin(e) {
   const auth = e.auth
   if (!auth || !auth.id) {
     throw new ForbiddenError("Autenticação necessária")
+  }
+
+  // Allow superusers to edit any company via Admin UI
+  try {
+    const superuser = $app.findRecordById("_superusers", auth.id)
+    if (superuser) {
+      return e.next()
+    }
+  } catch (_) {
+    // Not a superuser, continue to check company admin permissions
   }
 
   const companyId = e.record.id

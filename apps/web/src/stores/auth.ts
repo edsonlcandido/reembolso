@@ -97,7 +97,19 @@ export const useAuthStore = defineStore('auth', () => {
       }
 
       await pb.collection('users').create(data)
-      return await login(email, password)
+      const loginResult = await login(email, password)
+
+      // Dispara email de verificação após registro bem-sucedido
+      if (loginResult.success) {
+        try {
+          await pb.collection('users').requestVerification(email)
+        } catch (verifyError: any) {
+          console.error('Erro ao solicitar verificação de email:', verifyError)
+          // Não bloqueia o fluxo mesmo se falhar o envio
+        }
+      }
+
+      return loginResult
     } catch (error: any) {
       return {
         success: false,
@@ -155,6 +167,30 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function confirmVerification(token: string) {
+    try {
+      await pb.collection('users').confirmVerification(token)
+      return { success: true }
+    } catch (error: any) {
+      return {
+        success: false,
+        error: translateError(error)
+      }
+    }
+  }
+
+  async function resendVerificationEmail(email: string) {
+    try {
+      await pb.collection('users').requestVerification(email)
+      return { success: true }
+    } catch (error: any) {
+      return {
+        success: false,
+        error: translateError(error)
+      }
+    }
+  }
+
   return {
     user,
     token,
@@ -166,5 +202,7 @@ export const useAuthStore = defineStore('auth', () => {
     requestPasswordReset,
     updateProfile,
     changePassword,
+    confirmVerification,
+    resendVerificationEmail,
   }
 })

@@ -65,7 +65,7 @@ export const useCompanyStore = defineStore('company', () => {
         return { success: false, error: 'Erro ao criar empresa.' }
       }
       await fetchMyCompanies()
-      return { success: true }
+      return { success: true, companyId: response.id as string }
     } catch (error: any) {
       return { success: false, error: error?.message || 'Erro ao criar empresa.' }
     } finally {
@@ -106,26 +106,73 @@ export const useCompanyStore = defineStore('company', () => {
     if (!currentCompany.value) return { success: false, error: 'Nenhuma empresa selecionada.' }
     loading.value = true
     try {
-      const userResult = await pb.send('/api/users/find-by-email', {
-        method: 'POST',
-        body: JSON.stringify({ email }),
-        headers: { 'Content-Type': 'application/json' },
-      })
-      if (!userResult || !userResult.id) {
+      // Tentar encontrar o usuário
+      let userId: string | null = null
+      let userFound = true
+
+      try {
+        const userResult = await pb.send('/api/users/find-by-email', {
+          method: 'POST',
+          body: JSON.stringify({ email }),
+          headers: { 'Content-Type': 'application/json' },
+        })
+        if (userResult && userResult.id) {
+          userId = userResult.id
+        } else {
+          userFound = false
+        }
+      } catch (error: any) {
+        const serverMessage = error?.response?.message || error?.data?.message || error?.data?.error
+        if (error?.status === 404 || serverMessage?.includes('não encontrado')) {
+          userFound = false
+        } else {
+          throw error
+        }
+      }
+
+      if (userFound && !userId) {
         return { success: false, error: 'Usuário não encontrado com este e-mail.' }
       }
-      await pb.collection('company_users').create({
-        company: currentCompany.value.id,
-        user: userResult.id,
-        role,
-        active: true,
-      })
-      return { success: true }
+
+      // Se usuário existe, adicionar como membro normal
+      if (userId) {
+        await pb.collection('company_users').create({
+          company: currentCompany.value.id,
+          user: userId,
+          role,
+          active: true,
+        })
+        return { success: true, message: 'Membro adicionado com sucesso!' }
+      }
+
+      // Se usuário não existe, criar usuário e enviar email de reset de senha
+      if (!userFound) {
+        try {
+          const result = await pb.send('/api/memberships/send-invite', {
+            method: 'POST',
+            body: JSON.stringify({
+              email,
+              companyId: currentCompany.value.id,
+              companyName: currentCompany.value.name,
+              role,
+            }),
+            headers: { 'Content-Type': 'application/json' },
+          })
+
+          return { 
+            success: true, 
+            message: result.message || `Usuário criado e adicionado à empresa. Email de configuração de senha enviado para ${email}.` 
+          }
+        } catch (inviteErr: any) {
+          console.error('Erro ao criar usuário e enviar convite:', inviteErr)
+          const serverMessage = inviteErr?.response?.message || inviteErr?.data?.message || inviteErr?.data?.error
+          return { success: false, error: serverMessage || 'Erro ao criar usuário e enviar convite. Tente novamente.' }
+        }
+      }
+
+      return { success: false, error: 'Erro ao processar solicitação.' }
     } catch (error: any) {
       const serverMessage = error?.response?.message || error?.data?.message || error?.data?.error
-      if (error?.status === 404 || serverMessage?.includes('não encontrado')) {
-        return { success: false, error: 'Usuário não encontrado com este e-mail.' }
-      }
       return { success: false, error: serverMessage || error?.message || 'Erro ao adicionar membro.' }
     } finally {
       loading.value = false
@@ -139,6 +186,18 @@ export const useCompanyStore = defineStore('company', () => {
       return { success: true }
     } catch (error: any) {
       return { success: false, error: error?.message || 'Erro ao atualizar papel do membro.' }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function toggleMemberActive(membershipId: string, active: boolean) {
+    loading.value = true
+    try {
+      await pb.collection('company_users').update(membershipId, { active })
+      return { success: true }
+    } catch (error: any) {
+      return { success: false, error: error?.message || 'Erro ao atualizar status do membro.' }
     } finally {
       loading.value = false
     }
@@ -187,6 +246,7 @@ export const useCompanyStore = defineStore('company', () => {
     fetchMembers,
     addMember,
     updateMemberRole,
+    toggleMemberActive,
     removeMember,
     getCompanyBySlug,
   }

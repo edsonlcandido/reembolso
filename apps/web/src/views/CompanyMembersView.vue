@@ -65,8 +65,13 @@
             class="flex flex-col sm:flex-row sm:items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all"
           >
             <div class="flex items-center gap-3 flex-1 min-w-0">
-              <div class="w-10 h-10 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+              <div class="relative w-10 h-10 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
                 {{ (member.expand?.user?.name || member.expand?.user?.email || '?')[0].toUpperCase() }}
+                <div
+                  v-if="!member.expand?.user?.verified"
+                  class="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-yellow-400 border-2 border-white"
+                  title="Email não verificado"
+                />
               </div>
               <div class="min-w-0">
                 <p class="font-semibold text-gray-900 truncate">
@@ -92,6 +97,16 @@
                 <option value="approver">Aprovador</option>
                 <option value="employee">Funcionário</option>
               </select>
+
+              <button
+                v-if="!isCurrentUser(member)"
+                @click="handleToggleActive(member)"
+                :class="member.active !== false ? 'border-amber-300 text-amber-600 hover:bg-amber-50' : 'border-green-300 text-green-600 hover:bg-green-50'"
+                class="rounded-lg border px-3 py-2 text-sm transition-all"
+                :title="member.active !== false ? 'Desativar usuário' : 'Ativar usuário'"
+              >
+                {{ member.active !== false ? 'Desativar' : 'Ativar' }}
+              </button>
 
               <button
                 v-if="!isCurrentUser(member)"
@@ -177,12 +192,25 @@ async function handleAddMember() {
   errorMsg.value = ''
   const result = await companyStore.addMember(newMemberEmail.value, newMemberRole.value)
   if (result.success) {
-    successMsg.value = 'Membro convidado com sucesso!'
+    successMsg.value = result.message || 'Membro convidado com sucesso!'
     newMemberEmail.value = ''
     newMemberRole.value = 'employee'
     await companyStore.fetchMembers()
   } else {
     errorMsg.value = result.error || 'Erro ao convidar membro.'
+  }
+}
+
+async function handleToggleActive(member: RecordModel) {
+  successMsg.value = ''
+  errorMsg.value = ''
+  const newActive = member.active === false
+  const result = await companyStore.toggleMemberActive(member.id, newActive)
+  if (result.success) {
+    successMsg.value = newActive ? 'Usuário ativado com sucesso!' : 'Usuário desativado com sucesso!'
+    await companyStore.fetchMembers()
+  } else {
+    errorMsg.value = result.error || 'Erro ao atualizar status do usuário.'
   }
 }
 

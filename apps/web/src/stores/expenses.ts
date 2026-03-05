@@ -92,7 +92,7 @@ export const useExpensesStore = defineStore('expenses', () => {
     }
   }
 
-  async function createReport(data: { company: string; title: string; period_start?: string; period_end?: string; cost_center?: string; project?: string; description?: string; advance_amount?: number }) {
+  async function createReport(data: { company: string; title: string; period_start?: string; period_end?: string; cost_center?: string; project?: string; description?: string; advance_amount?: number; advance_date?: string }) {
     loading.value = true
     try {
       const record = await pb.collection('expense_reports').create({

@@ -53,8 +53,13 @@
             to="/profile"
             class="flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-50 to-purple-50 px-4 py-2 hover:from-blue-100 hover:to-purple-100 transition-all"
           >
-            <div class="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-purple-600">
+            <div class="relative flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-purple-600">
               <UserCircleIcon class="h-5 w-5 text-white" />
+              <div
+                v-if="!authStore.user?.verified"
+                class="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-yellow-400 border-2 border-white"
+                title="Email não verificado"
+              />
             </div>
             <span class="text-sm font-semibold text-gray-700">{{ userName }}</span>
           </router-link>
