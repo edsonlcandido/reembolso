@@ -157,6 +157,14 @@
             >
               Você aprovou este relatório. Encaminhe para outro aprovador para registrar o pagamento.
             </p>
+            <button
+              v-if="report.submitted_to && (report.status === 'submitted' || report.status === 'approved')"
+              @click="handleNotifyCurrentStageUser"
+              :disabled="submitting || notifying"
+              class="rounded-lg border border-indigo-300 px-5 py-2.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-50 transition-all disabled:opacity-50"
+            >
+              {{ notifying ? 'Enviando...' : 'Notificar' }}
+            </button>
             <router-link
               to="/reports"
               class="rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all"
@@ -739,6 +747,7 @@ const fileInputRef = ref<HTMLInputElement | null>(null)
 const cameraInputRef = ref<HTMLInputElement | null>(null)
 const analyzingReceipt = ref(false)
 const submitting = ref(false)
+const notifying = ref(false)
 const categories = ref<RecordModel[]>([])
 const showEditItemModal = ref(false)
 const editingItem = ref<RecordModel | null>(null)
@@ -1313,6 +1322,25 @@ async function handleForwardReport() {
     }
   } finally {
     submitting.value = false
+  }
+}
+
+async function handleNotifyCurrentStageUser() {
+  if (!report.value) return
+  successMsg.value = ''
+  errorMsg.value = ''
+  notifying.value = true
+  try {
+    await pb.send('/api/expense-reports/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reportId: report.value.id }),
+    })
+    successMsg.value = 'Notificação enviada com sucesso!'
+  } catch (err: any) {
+    errorMsg.value = err?.message || 'Erro ao enviar notificação.'
+  } finally {
+    notifying.value = false
   }
 }
 
