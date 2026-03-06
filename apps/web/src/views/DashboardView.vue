@@ -375,9 +375,7 @@ async function loadDashboard() {
       const userId = pb.authStore.record?.id
 
       let filter = `company="${companyId}"`
-      if (role === 'approver' && userId) {
-        filter += ` && (user="${userId}" || submitted_to="${userId}")`
-      } else if (role !== 'admin' && userId) {
+      if (role !== 'admin' && userId) {
         filter += ` && user="${userId}"`
       }
 
