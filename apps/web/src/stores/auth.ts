@@ -167,6 +167,18 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function confirmPasswordReset(token: string, password: string, passwordConfirm: string) {
+    try {
+      await pb.collection('users').confirmPasswordReset(token, password, passwordConfirm)
+      return { success: true }
+    } catch (error: any) {
+      return {
+        success: false,
+        error: translateError(error)
+      }
+    }
+  }
+
   async function confirmVerification(token: string) {
     try {
       await pb.collection('users').confirmVerification(token)
@@ -202,6 +214,7 @@ export const useAuthStore = defineStore('auth', () => {
     requestPasswordReset,
     updateProfile,
     changePassword,
+    confirmPasswordReset,
     confirmVerification,
     resendVerificationEmail,
   }

@@ -3,6 +3,7 @@ import pb from '../services/pocketbase'
 import { useCompanyStore } from '../stores/company'
 import LoginView from '../views/LoginView.vue'
 import VerifyEmailView from '../views/VerifyEmailView.vue'
+import ConfirmPasswordResetView from '../views/ConfirmPasswordResetView.vue'
 import CompanyAuthView from '../views/CompanyAuthView.vue'
 import AppLayout from '../layouts/AppLayout.vue'
 import DashboardView from '../views/DashboardView.vue'
@@ -35,6 +36,11 @@ const router = createRouter({
       path: '/verify-email',
       name: 'verify-email',
       component: VerifyEmailView,
+    },
+    {
+      path: '/reset-password',
+      name: 'reset-password',
+      component: ConfirmPasswordResetView,
     },
     {
       path: '/companies/:slug',

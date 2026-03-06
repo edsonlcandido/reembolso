@@ -20,7 +20,7 @@
         <div class="border-b border-gray-200">
           <nav class="flex -mb-px">
             <button
-              @click="activeTab = 'login'"
+              @click="activeTab = 'login'; errorMsg = ''; successMsg = ''"
               :class="[
                 'flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm',
                 activeTab === 'login'
@@ -31,7 +31,7 @@
               Entrar
             </button>
             <button
-              @click="activeTab = 'register'"
+              @click="activeTab = 'register'; errorMsg = ''; successMsg = ''"
               :class="[
                 'flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm',
                 activeTab === 'register'
@@ -82,6 +82,13 @@
             </span>
             <span v-else>Entrar</span>
           </button>
+
+          <div class="text-center">
+            <button type="button" @click="activeTab = 'forgot'; errorMsg = ''; successMsg = ''"
+              class="text-sm text-blue-600 hover:text-purple-600 font-medium transition-colors">
+              Esqueceu sua senha?
+            </button>
+          </div>
         </form>
 
         <!-- Register Form -->
@@ -147,6 +154,46 @@
             <span v-else>Registrar</span>
           </button>
         </form>
+
+        <!-- Forgot Password Form -->
+        <form v-if="activeTab === 'forgot'" @submit.prevent="handleForgotPassword" class="p-8 space-y-6">
+          <p class="text-sm text-gray-600">
+            Informe seu e-mail e enviaremos um link para redefinir sua senha.
+          </p>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">E-mail</label>
+            <input
+              v-model="forgotEmail"
+              type="email"
+              required
+              class="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+              placeholder="seu@email.com"
+            />
+          </div>
+
+          <button
+            type="submit"
+            :disabled="loading"
+            class="w-full rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-3 text-sm font-semibold text-white shadow-lg hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span v-if="loading" class="flex items-center justify-center gap-2">
+              <svg class="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              Enviando...
+            </span>
+            <span v-else>Enviar link de recuperação</span>
+          </button>
+
+          <div class="text-center">
+            <button type="button" @click="activeTab = 'login'; errorMsg = ''; successMsg = ''"
+              class="text-sm text-blue-600 hover:text-purple-600 font-medium transition-colors">
+              Voltar ao Login
+            </button>
+          </div>
+        </form>
       </div>
 
       <div class="text-center">
@@ -169,7 +216,7 @@ const router = useRouter()
 const slug = ref(route.params.slug as string)
 const companyId = ref('')
 const companyName = ref('')
-const activeTab = ref<'login' | 'register'>('login')
+const activeTab = ref<'login' | 'register' | 'forgot'>('login')
 const loading = ref(false)
 const errorMsg = ref('')
 const successMsg = ref('')
@@ -185,6 +232,8 @@ const registerForm = ref({
   password: '',
   passwordConfirm: '',
 })
+
+const forgotEmail = ref('')
 
 async function handleLogin() {
   loading.value = true
@@ -254,6 +303,27 @@ async function handleRegister() {
     setTimeout(() => router.push('/dashboard'), 1000)
   } catch (error: any) {
     errorMsg.value = error?.message || 'Erro ao criar conta.'
+    loading.value = false
+  }
+}
+
+async function handleForgotPassword() {
+  if (!forgotEmail.value.trim()) {
+    errorMsg.value = 'Informe seu e-mail.'
+    return
+  }
+
+  loading.value = true
+  errorMsg.value = ''
+  successMsg.value = ''
+
+  try {
+    await pb.collection('users').requestPasswordReset(forgotEmail.value)
+  } catch {
+    // Always show the same neutral message to avoid leaking whether an email is registered
+  } finally {
+    successMsg.value = 'Se o e-mail estiver cadastrado, você receberá um link para redefinir sua senha.'
+    forgotEmail.value = ''
     loading.value = false
   }
 }

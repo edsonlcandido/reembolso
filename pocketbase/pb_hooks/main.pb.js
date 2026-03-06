@@ -392,19 +392,30 @@ routerAdd("POST", "/api/memberships/send-invite", (e) => {
       }
     }
 
-    // 3. Adicionar usuário à empresa
+    // 3. Adicionar usuário à empresa (verificar se já é membro)
+    let membershipExists = false
     try {
-      const companyUsersCol = $app.findCollectionByNameOrId("company_users")
-      const membership = new Record(companyUsersCol)
-      membership.set("company", companyId)
-      membership.set("user", user.id)
-      membership.set("role", role)
-      membership.set("active", true)
-      
-      $app.save(membership)
-    } catch (membershipErr) {
-      console.log("Erro ao adicionar membro:", membershipErr)
-      return e.json(500, { error: "Erro ao adicionar membro à empresa: " + String(membershipErr) })
+      $app.findFirstRecordByFilter("company_users", `company="${companyId}" && user="${user.id}"`)
+      membershipExists = true
+    } catch (_) {
+      // findFirstRecordByFilter lança exceção quando não encontra registro
+      membershipExists = false
+    }
+
+    if (!membershipExists) {
+      try {
+        const companyUsersCol = $app.findCollectionByNameOrId("company_users")
+        const membership = new Record(companyUsersCol)
+        membership.set("company", companyId)
+        membership.set("user", user.id)
+        membership.set("role", role)
+        membership.set("active", true)
+        
+        $app.save(membership)
+      } catch (membershipErr) {
+        console.log("Erro ao adicionar membro:", membershipErr)
+        return e.json(500, { error: "Erro ao adicionar membro à empresa: " + String(membershipErr) })
+      }
     }
 
     // 4. Enviar email de reset de senha (template nativo do PocketBase)
@@ -416,7 +427,7 @@ routerAdd("POST", "/api/memberships/send-invite", (e) => {
     }
 
     const message = userAlreadyExists 
-      ? "Membro adicionado com sucesso! Email de configuração enviado."
+      ? "Membro adicionado com sucesso! Email de configuração de senha enviado."
       : "Usuário criado e adicionado à empresa. Email de configuração de senha enviado."
 
     return e.json(200, { 
