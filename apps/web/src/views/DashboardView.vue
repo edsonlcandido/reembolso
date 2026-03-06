@@ -371,11 +371,13 @@ async function loadDashboard() {
 
     if (companyStore.currentCompany) {
       const companyId = companyStore.currentCompany.id
-      const isAdmin = companyStore.currentUserRole === 'admin' || companyStore.currentUserRole === 'approver'
+      const role = companyStore.currentUserRole
       const userId = pb.authStore.record?.id
 
       let filter = `company="${companyId}"`
-      if (!isAdmin && userId) {
+      if (role === 'approver' && userId) {
+        filter += ` && (user="${userId}" || submitted_to="${userId}")`
+      } else if (role !== 'admin' && userId) {
         filter += ` && user="${userId}"`
       }
 
