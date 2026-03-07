@@ -97,25 +97,25 @@
             </label>
           </div>
 
-          <div class="flex justify-between items-center gap-3 pt-2 border-t border-gray-100">
+          <div class="space-y-3 pt-2 border-t border-gray-100">
             <button
               type="button"
-              @click="handleReset"
-              class="rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all"
+              @click="handlePreview"
+              class="w-full rounded-lg border border-blue-200 bg-blue-50 px-5 py-3 text-sm font-semibold text-blue-700 hover:bg-blue-100 transition-all flex items-center justify-center gap-2"
             >
-              Restaurar Padrão
+              🖥️ Pré-visualizar com dados de exemplo
             </button>
             <div class="flex gap-3">
               <button
                 type="button"
-                @click="handlePreview"
-                class="rounded-lg border border-blue-300 px-5 py-2.5 text-sm font-semibold text-blue-700 hover:bg-blue-50 transition-all"
+                @click="handleReset"
+                class="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-all"
               >
-                🖥️ Pré-visualizar com dados de exemplo
+                Restaurar Padrão
               </button>
               <button
                 type="submit"
-                class="rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg hover:from-blue-700 hover:to-purple-700 transition-all"
+                class="flex-1 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg hover:from-blue-700 hover:to-purple-700 transition-all"
               >
                 Salvar Configurações
               </button>
