@@ -30,6 +30,7 @@
             <div class="header-left">
               <div class="company-name">{{ companyName }}</div>
               <div class="doc-title">Relatório de Despesas</div>
+              <div v-if="template.docCode" class="doc-code">{{ template.docCode }}</div>
             </div>
             <div class="header-right">
               <div class="status-badge" :data-status="report?.status">{{ statusLabel(report?.status) }}</div>
@@ -227,6 +228,7 @@ const loading = ref(true)
 const error = ref('')
 
 const template = ref({
+  docCode: '',
   introText: '',
   footerText: '',
   signatureLabel1: 'Solicitante',
@@ -490,6 +492,15 @@ onMounted(async () => {
   color: #111827;
   letter-spacing: -0.02em;
   line-height: 1.2;
+}
+
+.doc-code {
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'Courier New', 'Courier', monospace;
+  color: #2563eb;
+  letter-spacing: 0.05em;
+  margin-top: 2px;
 }
 
 .header-right { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
