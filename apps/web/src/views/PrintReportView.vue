@@ -40,6 +40,7 @@
           <!-- Report info -->
           <div class="info-block">
             <div class="info-title">{{ report?.title }}</div>
+            <div v-if="report?.description" class="info-description">{{ report.description }}</div>
             <div class="info-grid">
               <div class="info-item">
                 <span class="info-label">Colaborador</span>
@@ -320,6 +321,7 @@ function loadMockData() {
   report.value = {
     id: 'preview',
     title: 'Viagem Comercial — São Paulo',
+    description: 'Despesas referentes à viagem para reuniões com clientes e prospecção de novos parceiros na região metropolitana de SP.',
     status: 'approved',
     period_start: '2025-04-01T00:00:00.000Z',
     period_end: '2025-04-05T00:00:00.000Z',
@@ -544,6 +546,13 @@ onMounted(async () => {
   font-size: 14px;
   font-weight: 700;
   color: #111827;
+  margin-bottom: 4px;
+}
+
+.info-description {
+  font-size: 12px;
+  color: #4b5563;
+  line-height: 1.5;
   margin-bottom: 10px;
 }
 
