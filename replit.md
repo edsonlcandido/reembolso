@@ -70,6 +70,39 @@ PocketBase collections created via migrations:
 - Category enum: food, transport, lodging, supplies, other
 - Status workflow: draft → submitted → approved/rejected → paid
 
+## PocketBase Hook Gotchas
+
+### Variáveis globais não funcionam em hooks
+O runtime JavaScript do PocketBase (goja, baseado em ES5) **não expõe variáveis `const`/`let`/`var` declaradas no escopo do arquivo como globais acessíveis dentro de funções nomeadas**.
+
+**Errado:**
+```js
+const SUPPORTED_CURRENCIES = ["BRL", "CLP", "USD", "EUR"]
+
+function validateCurrencyFields(e) {
+  if (SUPPORTED_CURRENCIES.indexOf(currency) === -1) { ... } // ReferenceError!
+}
+```
+
+**Correto — declarar dentro da função:**
+```js
+function validateCurrencyFields(e) {
+  const supportedCurrencies = ["BRL", "CLP", "USD", "EUR"]
+  if (supportedCurrencies.indexOf(currency) === -1) { ... }
+}
+```
+
+### Métodos ES2016+ não suportados
+O runtime goja é ES5.1. Não use `Array.prototype.includes()` — use `indexOf() !== -1`.
+Não use `toLocaleString("pt-BR")` — o objeto `Intl` não está disponível.
+
+### Registro de hooks de coleção
+Use `onRecordCreate` / `onRecordUpdate` (sem sufixo "Request") para hooks de coleção:
+```js
+onRecordCreate(myHandler, "nome_colecao")
+onRecordUpdate(myHandler, "nome_colecao")
+```
+
 ## Recent Changes
 - Implemented full company management (CRUD, member invitation, role assignment)
 - Built expense reports system (create reports, add items, status workflow)
