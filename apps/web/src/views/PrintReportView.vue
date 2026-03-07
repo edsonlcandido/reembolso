@@ -147,6 +147,29 @@
             </tfoot>
           </table>
 
+          <!-- History -->
+          <div v-if="historyEntries.length > 0" class="history-section">
+            <div class="section-title">Histórico de Ações</div>
+            <table class="data-table history-table">
+              <thead>
+                <tr>
+                  <th>Data/Hora</th>
+                  <th>Ação</th>
+                  <th>Usuário</th>
+                  <th>Observações</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="entry in historyEntries" :key="entry.id">
+                  <td class="col-date">{{ formatDateTime(entry.created) }}</td>
+                  <td>{{ actionLabel(entry.action) }}</td>
+                  <td>{{ actionUserName(entry) }}</td>
+                  <td class="col-notes">{{ entry.notes || '—' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
           <!-- Footer text -->
           <div v-if="template.footerText" class="footer-box">
             {{ template.footerText }}
@@ -233,6 +256,7 @@ const isPreview = computed(() => route.query.preview === '1')
 const report = ref<RecordModel | null>(null)
 const items = ref<RecordModel[]>([])
 const categories = ref<RecordModel[]>([])
+const approvalActions = ref<RecordModel[]>([])
 const loading = ref(true)
 const error = ref('')
 
@@ -292,6 +316,35 @@ const categorySummary = computed(() => {
 
 const balanceValue = computed(() => (report.value?.total_amount || 0) - (report.value?.advance_amount || 0))
 const balanceLabel = computed(() => balanceValue.value >= 0 ? 'Saldo a Reembolsar' : 'Saldo a Devolver')
+
+function actionLabel(action: string): string {
+  const map: Record<string, string> = {
+    approve: 'Relatório aprovado',
+    reject: 'Relatório rejeitado',
+    return_for_revision: 'Devolvido para revisão',
+    forward: 'Relatório encaminhado',
+    pay: 'Marcado como pago',
+    partially_pay: 'Parcialmente pago',
+    submit: 'Relatório enviado',
+  }
+  return map[action] || action
+}
+
+function actionUserName(action: RecordModel): string {
+  const u = action.expand?.user as RecordModel | undefined
+  return u?.name || u?.email || action.user || '—'
+}
+
+function formatDateTime(value: string): string {
+  if (!value) return '—'
+  return new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+}
+
+const historyEntries = computed(() =>
+  [...approvalActions.value].sort((a, b) =>
+    new Date(a.created).getTime() - new Date(b.created).getTime()
+  )
+)
 
 const itemsWithReceipts = computed(() => items.value.filter(i => i.receipt_image || i._imageUrl))
 const receiptGroups = computed(() => {
@@ -359,6 +412,14 @@ function loadMockData() {
     { id: '6', date: '2025-04-03T00:00:00Z', merchant: '', category: 'cat5', description: 'Visita ao cliente ABC — ida e volta (45 km)', amount: 6750, km: 45, receipt_image: '', _imageUrl: '' },
     { id: '7', date: '2025-04-04T00:00:00Z', merchant: 'Uber', category: 'cat2', description: 'Deslocamento interno', amount: 2300, receipt_image: '', _imageUrl: '' },
   ] as any[]
+
+  approvalActions.value = [
+    { id: 'a1', created: '2025-04-05T10:30:00Z', action: 'submit', notes: '', expand: { user: { name: 'João da Silva' } } },
+    { id: 'a2', created: '2025-04-06T09:15:00Z', action: 'return_for_revision', notes: 'Falta comprovante da hospedagem', expand: { user: { name: 'Maria Souza' } } },
+    { id: 'a3', created: '2025-04-06T14:00:00Z', action: 'submit', notes: 'Comprovante anexado', expand: { user: { name: 'João da Silva' } } },
+    { id: 'a4', created: '2025-04-07T11:00:00Z', action: 'approve', notes: '', expand: { user: { name: 'Maria Souza' } } },
+    { id: 'a5', created: '2025-04-08T16:30:00Z', action: 'pay', notes: 'Depósito realizado', expand: { user: { name: 'Carlos Oliveira' } } },
+  ] as any[]
 }
 
 onMounted(async () => {
@@ -375,15 +436,21 @@ onMounted(async () => {
 
   const reportId = route.params.id as string
   try {
-    const [reportData, itemsData] = await Promise.all([
+    const [reportData, itemsData, actionsData] = await Promise.all([
       pb.collection('expense_reports').getOne(reportId, { expand: 'user' }),
       pb.collection('expense_items').getFullList({
         filter: `report="${reportId}"`,
         sort: 'date',
         expand: 'category',
       }),
+      pb.collection('approval_actions').getFullList({
+        filter: `report="${reportId}"`,
+        sort: '-created',
+        expand: 'user',
+      }),
     ])
     report.value = reportData
+    approvalActions.value = actionsData
     const cats = await pb.collection('categories').getFullList({
       filter: `company="${reportData.company}"`,
       sort: 'name',
@@ -645,6 +712,15 @@ onMounted(async () => {
 .col-cat { white-space: nowrap; }
 .col-receipt-icon { width: 20px; text-align: center; padding: 0 4px; }
 .no-receipt-icon { width: 14px; height: 14px; color: #9ca3af; display: inline-block; vertical-align: middle; }
+.col-notes { color: #6b7280; font-size: 11px; }
+
+.history-section {
+  margin-top: 20px;
+}
+
+.history-table td {
+  font-size: 11px;
+}
 .col-desc { color: #6b7280; font-size: 11px; }
 .empty-row { text-align: center; color: #9ca3af; font-style: italic; padding: 16px; }
 
