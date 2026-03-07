@@ -711,8 +711,10 @@
                 :readonly="isEditKmCategory"
                 class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                 :class="{ 'bg-gray-50 cursor-not-allowed': isEditKmCategory }"
-                placeholder="0,00" />
+                placeholder="0,00"
+                @input="onEditAmountChange" />
               <p v-if="isEditKmCategory" class="mt-1 text-xs text-gray-500">Calculado automaticamente: km × taxa/km</p>
+              <p v-if="isEditForeignCurrency && !isEditKmCategory" class="mt-1 text-xs text-gray-500">Edite para recalcular a taxa de conversão.</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Estabelecimento</label>
@@ -728,7 +730,8 @@
               </div>
               <div>
                 <label class="block text-sm font-medium text-blue-700 mb-1">Taxa de conversão</label>
-                <input v-model="editItemForm.conversionRate" type="number" step="0.000001" min="0" class="w-full rounded-lg border border-blue-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-gray-50" readonly />
+                <input v-model="editItemForm.conversionRate" type="number" step="0.000001" min="0" class="w-full rounded-lg border border-blue-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" @input="onEditRateChange" />
+                <p class="mt-1 text-xs text-blue-600">Edite para recalcular o valor em BRL.</p>
               </div>
             </div>
             <p v-if="editItemForm.currencyNote" class="text-xs text-blue-600">{{ editItemForm.currencyNote }}</p>
@@ -876,6 +879,42 @@ function triggerConversion() {
       itemForm.value.iofAmount = iof.toFixed(2)
     }
   }, 500)
+}
+
+let editAmountDebounceTimer: ReturnType<typeof setTimeout> | null = null
+let editRateDebounceTimer: ReturnType<typeof setTimeout> | null = null
+let editRecalcLock = false
+
+function onEditAmountChange() {
+  if (!isEditForeignCurrency.value || editRecalcLock) return
+  if (editAmountDebounceTimer) clearTimeout(editAmountDebounceTimer)
+  editAmountDebounceTimer = setTimeout(() => {
+    const brl = parseFloat(editItemForm.value.amountDisplay || '0')
+    const orig = parseFloat(editItemForm.value.originalAmount || '0')
+    if (brl > 0 && orig > 0) {
+      editRecalcLock = true
+      const rate = brl / orig
+      editItemForm.value.conversionRate = rate.toFixed(6)
+      editItemForm.value.suggestedBrlAmount = String(brl)
+      editRecalcLock = false
+    }
+  }, 400)
+}
+
+function onEditRateChange() {
+  if (!isEditForeignCurrency.value || editRecalcLock) return
+  if (editRateDebounceTimer) clearTimeout(editRateDebounceTimer)
+  editRateDebounceTimer = setTimeout(() => {
+    const rate = parseFloat(editItemForm.value.conversionRate || '0')
+    const orig = parseFloat(editItemForm.value.originalAmount || '0')
+    if (rate > 0 && orig > 0) {
+      editRecalcLock = true
+      const brl = orig * rate
+      editItemForm.value.amountDisplay = brl.toFixed(2)
+      editItemForm.value.suggestedBrlAmount = String(brl)
+      editRecalcLock = false
+    }
+  }, 400)
 }
 
 function findTaxesCategoryId(): string {
