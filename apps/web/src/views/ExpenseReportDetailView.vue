@@ -900,7 +900,7 @@ let editRateDebounceTimer: ReturnType<typeof setTimeout> | null = null
 let editRecalcLock = false
 
 function buildCurrencyNote(orig: number, cur: string, rate: number): string {
-  return `Compra em ${cur} ${orig} (taxa: 1 ${cur} = ${rate.toFixed(4)} BRL)`
+  return `Compra em ${cur} ${orig} (taxa: 1 ${cur} = ${rate.toFixed(6)} BRL)`
 }
 
 function onEditAmountChange() {
