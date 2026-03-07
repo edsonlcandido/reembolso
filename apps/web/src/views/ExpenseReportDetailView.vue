@@ -899,6 +899,10 @@ let editAmountDebounceTimer: ReturnType<typeof setTimeout> | null = null
 let editRateDebounceTimer: ReturnType<typeof setTimeout> | null = null
 let editRecalcLock = false
 
+function buildCurrencyNote(orig: number, cur: string, rate: number): string {
+  return `Compra em ${cur} ${orig} (taxa: 1 ${cur} = ${rate.toFixed(4)} BRL)`
+}
+
 function onEditAmountChange() {
   if (!isEditForeignCurrency.value || editRecalcLock) return
   if (editAmountDebounceTimer) clearTimeout(editAmountDebounceTimer)
@@ -910,6 +914,7 @@ function onEditAmountChange() {
       const rate = brl / orig
       editItemForm.value.conversionRate = rate.toFixed(6)
       editItemForm.value.suggestedBrlAmount = String(brl)
+      editItemForm.value.currencyNote = buildCurrencyNote(orig, editItemForm.value.original_currency, rate)
       editRecalcLock = false
     }
   }, 400)
@@ -926,6 +931,7 @@ function onEditRateChange() {
       const brl = orig * rate
       editItemForm.value.amountDisplay = brl.toFixed(2)
       editItemForm.value.suggestedBrlAmount = String(brl)
+      editItemForm.value.currencyNote = buildCurrencyNote(orig, editItemForm.value.original_currency, rate)
       editRecalcLock = false
     }
   }, 400)
