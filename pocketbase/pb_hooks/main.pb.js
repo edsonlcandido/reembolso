@@ -560,15 +560,15 @@ routerAdd("POST", "/api/expense-reports/notify", (e) => {
 
 routerAdd("POST", "/api/currency/convert", (e) => {
   const body = e.requestInfo().body
-  const amount = body.amount
+  const amount = parseFloat(body.amount)
   const from = body.from
   const to = body.to
 
-  if (amount == null || !from || !to) {
+  if (body.amount == null || !from || !to) {
     return e.json(400, { error: "Campos obrigatórios: amount, from, to" })
   }
 
-  if (typeof amount !== "number" || amount <= 0) {
+  if (isNaN(amount) || amount <= 0) {
     return e.json(400, { error: "amount deve ser um número positivo" })
   }
 

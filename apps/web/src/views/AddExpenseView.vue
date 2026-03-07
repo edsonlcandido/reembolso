@@ -312,8 +312,7 @@ async function fetchConversion(amount: number) {
   try {
     const data = await pb.send('/api/currency/convert', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount, from: itemForm.value.currency, to: 'BRL' }),
+      body: { amount, from: itemForm.value.currency, to: 'BRL' },
     })
     itemForm.value.amountDisplay = String(data.brl_amount)
     conversionRate.value = data.conversion_rate

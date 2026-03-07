@@ -850,8 +850,7 @@ async function fetchConversion(amount: number, from: string, to: string) {
     convertingCurrency.value = true
     const data = await pb.send('/api/currency/convert', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount, from, to }),
+      body: { amount, from, to },
     })
     return data
   } catch (err: any) {
