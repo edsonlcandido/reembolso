@@ -100,6 +100,7 @@ import {
   UsersIcon,
   TagIcon,
   ClipboardDocumentCheckIcon,
+  PrinterIcon,
 } from '@heroicons/vue/24/outline'
 import { Bars3Icon, UserCircleIcon, ArrowRightOnRectangleIcon } from '@heroicons/vue/24/outline'
 
@@ -147,6 +148,7 @@ const allNavItems = [
   { path: '/companies', label: 'Empresa', icon: BuildingOfficeIcon, adminOnly: true, approverOnly: false, showForNewUser: true },
   { path: '/companies/members', label: 'Membros', icon: UsersIcon, adminOnly: true, approverOnly: false, showForNewUser: false },
   { path: '/categories', label: 'Categorias', icon: TagIcon, adminOnly: true, approverOnly: false, showForNewUser: false },
+  { path: '/print-template', label: 'Modelo de Impressão', icon: PrinterIcon, adminOnly: true, approverOnly: false, showForNewUser: false },
 ]
 
 const navItems = computed(() =>

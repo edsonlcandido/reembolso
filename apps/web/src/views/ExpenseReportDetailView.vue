@@ -166,6 +166,13 @@
               {{ notifying ? 'Enviando...' : 'Notificar' }}
             </button>
             <router-link
+              :to="`/reports/${report.id}/print`"
+              target="_blank"
+              class="rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all flex items-center gap-2"
+            >
+              🖨️ Imprimir / PDF
+            </router-link>
+            <router-link
               to="/reports"
               class="rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all"
             >
