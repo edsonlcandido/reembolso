@@ -1,13 +1,12 @@
 /// <reference path="../pb_data/types.d.ts" />
 
-const SUPPORTED_CURRENCIES = ["BRL", "CLP", "USD", "EUR"]
-
 function validateCurrencyFields(e) {
+  const supportedCurrencies = ["BRL", "CLP", "USD", "EUR"]
   const currency = e.record.getString("original_currency") || "BRL"
 
-  if (currency && SUPPORTED_CURRENCIES.indexOf(currency) === -1) {
+  if (currency && supportedCurrencies.indexOf(currency) === -1) {
     throw new BadRequestError(
-      "Moeda não suportada: " + currency + ". Moedas válidas: " + SUPPORTED_CURRENCIES.join(", ")
+      "Moeda não suportada: " + currency + ". Moedas válidas: " + supportedCurrencies.join(", ")
     )
   }
 
