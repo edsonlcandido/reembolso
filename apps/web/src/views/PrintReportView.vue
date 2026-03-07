@@ -822,7 +822,7 @@ onMounted(async () => {
 }
 
 .receipt-card-empty {
-  border-style: dashed;
+  border: none;
 }
 
 .receipt-img-wrap {
