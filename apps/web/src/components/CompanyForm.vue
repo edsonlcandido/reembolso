@@ -110,9 +110,11 @@
 
 <script setup lang="ts">
 import { useCompanyStore } from '../stores/company'
+import { useRouter } from 'vue-router'
 import { ref } from 'vue'
 
 const emit = defineEmits(['created'])
+const router = useRouter()
 
 const companyStore = useCompanyStore()
 
@@ -217,21 +219,11 @@ async function handleSubmit() {
   const result = await companyStore.createCompany(data)
 
   if (result.success) {
-    successMsg.value = 'Empresa criada com sucesso!'
-    // Reset form
-    form.value = {
-      name: '',
-      slug: '',
-      cnpj: '',
-      email: '',
-      phone: '',
-      address: '',
+    const companyId = (result as any).companyId
+    emit('created')
+    if (companyId) {
+      router.push({ name: 'companies-edit', params: { id: companyId } })
     }
-    slugManuallyEdited.value = false
-    
-    setTimeout(() => {
-      emit('created')
-    }, 1000)
   } else {
     errorMsg.value = result.error || 'Erro ao criar empresa.'
   }
