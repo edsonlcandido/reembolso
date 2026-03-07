@@ -822,7 +822,6 @@ onMounted(async () => {
 }
 
 .receipt-card-empty {
-  background: #f9fafb;
   border-style: dashed;
 }
 
