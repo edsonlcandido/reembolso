@@ -1,17 +1,6 @@
 /// <reference path="../pb_data/types.d.ts" />
 
-/**
- * Hook: expense_items — enforce km-based amount on creation
- *
- * When an expense item is created with a km value (> 0), the client-supplied
- * amount is ignored and recalculated server-side as:
- *
- *   amount = km × company.km_rate
- *
- * This prevents users from sending inflated values for mileage expenses.
- * The company is looked up through the item's report relation.
- */
-onRecordCreateRequest((e) => {
+function recalcKmAmount(e) {
   const km = e.record.getFloat("km")
   if (!km || km <= 0) return e.next()
 
@@ -36,10 +25,12 @@ onRecordCreateRequest((e) => {
   }
 
   const kmRate = company.getFloat("km_rate") || 0
-  const calculatedAmount = km * kmRate
+  const calculatedAmount = Math.round(km * kmRate * 100)
 
-  // Override whatever amount the client sent
   e.record.set("amount", calculatedAmount)
 
   return e.next()
-}, "expense_items")
+}
+
+onRecordCreateRequest(recalcKmAmount, "expense_items")
+onRecordUpdateRequest(recalcKmAmount, "expense_items")
