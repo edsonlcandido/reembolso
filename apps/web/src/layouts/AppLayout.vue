@@ -26,7 +26,12 @@
           @click="sidebarOpen = false"
         >
           <component :is="item.icon" class="h-5 w-5 flex-shrink-0" />
-          <span>{{ item.label }}</span>
+          <span class="flex-1">{{ item.label }}</span>
+          <span
+            v-if="item.path === '/approvals' && pendingApprovalsCount > 0"
+            class="h-2.5 w-2.5 rounded-full bg-yellow-400 flex-shrink-0"
+            :title="`${pendingApprovalsCount} aprovação(ões) pendente(s)`"
+          />
         </router-link>
       </nav>
     </div>
@@ -82,10 +87,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useCompanyStore } from '../stores/company'
+import pb from '../services/pocketbase'
 import {
   HomeIcon,
   DocumentTextIcon,
@@ -94,6 +100,7 @@ import {
   UsersIcon,
   TagIcon,
   ClipboardDocumentCheckIcon,
+  PrinterIcon,
 } from '@heroicons/vue/24/outline'
 import { Bars3Icon, UserCircleIcon, ArrowRightOnRectangleIcon } from '@heroicons/vue/24/outline'
 
@@ -103,6 +110,27 @@ const authStore = useAuthStore()
 const companyStore = useCompanyStore()
 
 const sidebarOpen = ref(false)
+const pendingApprovalsCount = ref(0)
+
+async function fetchPendingApprovalsCount() {
+  if (!isApprover.value || !companyStore.currentCompany) {
+    pendingApprovalsCount.value = 0
+    return
+  }
+  try {
+    const userId = pb.authStore.record?.id
+    const companyId = companyStore.currentCompany.id
+    const result = await pb.collection('expense_reports').getList(1, 1, {
+      filter: `company="${companyId}" && submitted_to="${userId}" && status="submitted"`,
+    })
+    pendingApprovalsCount.value = result.totalItems
+  } catch {
+    pendingApprovalsCount.value = 0
+  }
+}
+
+onMounted(fetchPendingApprovalsCount)
+watch(() => route.path, fetchPendingApprovalsCount)
 
 const userName = computed(() => {
   return authStore.user?.name || authStore.user?.email || 'Usuário'
@@ -120,6 +148,7 @@ const allNavItems = [
   { path: '/companies', label: 'Empresa', icon: BuildingOfficeIcon, adminOnly: true, approverOnly: false, showForNewUser: true },
   { path: '/companies/members', label: 'Membros', icon: UsersIcon, adminOnly: true, approverOnly: false, showForNewUser: false },
   { path: '/categories', label: 'Categorias', icon: TagIcon, adminOnly: true, approverOnly: false, showForNewUser: false },
+  { path: '/print-template', label: 'Modelo de Impressão', icon: PrinterIcon, adminOnly: true, approverOnly: false, showForNewUser: false },
 ]
 
 const navItems = computed(() =>

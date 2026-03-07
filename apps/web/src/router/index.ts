@@ -18,6 +18,8 @@ import EditExpenseReportView from '../views/EditExpenseReportView.vue'
 import CategoriesView from '../views/CategoriesView.vue'
 import AddExpenseView from '../views/AddExpenseView.vue'
 import ApprovalsView from '../views/ApprovalsView.vue'
+import PrintTemplateView from '../views/PrintTemplateView.vue'
+import PrintReportView from '../views/PrintReportView.vue'
 
 const router = createRouter({
   history: createWebHistory('/app/'),
@@ -117,7 +119,19 @@ const router = createRouter({
           component: CategoriesView,
           meta: { requiresAdmin: true },
         },
+        {
+          path: 'print-template',
+          name: 'print-template',
+          component: PrintTemplateView,
+          meta: { requiresAdmin: true },
+        },
       ],
+    },
+    {
+      path: '/reports/:id/print',
+      name: 'print-report',
+      component: PrintReportView,
+      meta: { requiresAuth: true },
     },
   ],
 })

@@ -282,9 +282,10 @@ async function run() {
 
   const kmCategoryId = categories.find(c => c.name === "Quilometragem")?.id || transportCategoryId
 
-  // Client sends an inflated amount=9999; hook must override it with km × km_rate
+  // Client sends an inflated amount=9999; hook must override it with km × km_rate.
+  // Backend stores amount in centavos for km-based items.
   const kmDistance = 100
-  const expectedAmount = kmDistance * kmRate  // 65.00
+  const expectedAmountInCents = Math.round(kmDistance * kmRate * 100)  // 6500 cents
   const rKmItem = await api("/api/collections/expense_items/records", {
     method: "POST",
     headers: bearer(emp.token),
@@ -298,10 +299,16 @@ async function run() {
   })
   if (rKmItem.status !== 200) fail("Km expense item creation", rKmItem.data)
   const serverAmount = rKmItem.data.amount
-  if (Math.abs(serverAmount - expectedAmount) > 0.001) {
-    fail(`Km amount should be recalculated server-side: expected ${expectedAmount}, got ${serverAmount}`, rKmItem.data)
+  if (serverAmount !== expectedAmountInCents) {
+    fail(
+      `Km amount should be recalculated server-side in cents: expected ${expectedAmountInCents}, got ${serverAmount}`,
+      rKmItem.data
+    )
   }
-  ok(`Km item amount recalculated server-side: ${kmDistance}km × R$${kmRate} = R$${serverAmount} (client sent 9999)`)
+  const expectedAmountInReais = (expectedAmountInCents / 100).toFixed(2)
+  ok(
+    `Km item amount recalculated server-side: ${kmDistance}km × R$${kmRate} = R$${expectedAmountInReais} (${serverAmount} centavos; client sent 9999)`
+  )
 
   // ── 6. Create approver employee ───────────────────────────────────────────
   console.log("\n6. Creating second employee (future approver)...")
