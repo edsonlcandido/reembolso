@@ -284,7 +284,7 @@
                 <p v-if="convertingCurrency" class="mt-1 text-xs text-blue-600">Convertendo...</p>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Valor</label>
                 <input v-model="itemForm.amountDisplay" type="number" step="0.01" min="0" required
                   :readonly="isKmCategory"
                   class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
@@ -706,7 +706,7 @@
               </p>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Valor</label>
               <input v-model="editItemForm.amountDisplay" type="number" step="0.01" min="0" required
                 :readonly="isEditKmCategory"
                 class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"

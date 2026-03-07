@@ -134,7 +134,7 @@
               <p v-if="currencyNote" class="mt-1 text-xs text-gray-500">{{ currencyNote }}</p>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Valor (R$) <span
+              <label class="block text-sm font-medium text-gray-700 mb-1">Valor <span
                   class="text-red-500">*</span></label>
               <input v-model="itemForm.amountDisplay" type="number" step="0.01" min="0" required
                 :readonly="isKmCategory"
