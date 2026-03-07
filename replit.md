@@ -52,6 +52,7 @@ PocketBase collections created via migrations:
 - **expense_items**: Individual expenses (amount, category, receipt_image, OCR data)
 - **categories**: Custom expense categories per company
 - **audit_logs**: Complete audit trail
+- **print_templates**: Print/PDF report template per company (doc_title, intro_text, footer_text, signature labels, include_receipts)
 
 ## Superuser
 - Email: edsonluizcandido+admin@gmail.com
@@ -83,6 +84,6 @@ PocketBase collections created via migrations:
 - Added print/PDF report system: PrintTemplateView (admin-only template config), PrintReportView (standalone print layout with receipts 4-per-page), print button in ExpenseReportDetailView, "Modelo de Impressão" nav item for admins
 
 ## Print/PDF System
-- **PrintTemplateView** (`/print-template`, admin only): Configure intro text, footer text, signature labels, receipt inclusion toggle. Settings stored in localStorage per company.
-- **PrintReportView** (`/reports/:id/print`): Standalone A4 print layout. Page 1: company header + report metadata + items table + category summary + signatures. Subsequent pages: receipt images 4 per page (2x2 grid). Uses `window.print()` for PDF export.
+- **PrintTemplateView** (`/print-template`, admin only): Configure document title, intro text, footer text, signature labels, receipt inclusion toggle. Settings stored in PocketBase `print_templates` collection (1 record per company, unique index).
+- **PrintReportView** (`/reports/:id/print`): Standalone A4 print layout. Page 1: company header + report metadata + items table + category summary + signatures. Subsequent pages: receipt images 4 per page (2x2 grid). Uses `window.print()` for PDF export. Preview mode available via `?preview=1` query param with mock data.
 - Print button added to ExpenseReportDetailView, opens in new tab.

@@ -11,6 +11,10 @@
           <p class="text-sm text-green-700">Configurações salvas com sucesso.</p>
         </div>
 
+        <div v-if="errorMsg" class="rounded-lg bg-red-50 border border-red-200 p-4">
+          <p class="text-sm text-red-700">{{ errorMsg }}</p>
+        </div>
+
         <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <p class="text-sm text-blue-700">
             Este modelo é usado ao imprimir ou exportar relatórios de despesas em PDF. As configurações são salvas por empresa.
@@ -124,15 +128,17 @@
               <button
                 type="button"
                 @click="handleReset"
-                class="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-all"
+                :disabled="saving"
+                class="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-all disabled:opacity-50"
               >
                 Restaurar Padrão
               </button>
               <button
                 type="submit"
-                class="flex-1 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg hover:from-blue-700 hover:to-purple-700 transition-all"
+                :disabled="saving"
+                class="flex-1 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50"
               >
-                Salvar Configurações
+                {{ saving ? 'Salvando...' : 'Salvar Configurações' }}
               </button>
             </div>
           </div>
@@ -182,10 +188,14 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCompanyStore } from '../stores/company'
+import pb from '../services/pocketbase'
 
 const router = useRouter()
 const companyStore = useCompanyStore()
 const saved = ref(false)
+const saving = ref(false)
+const errorMsg = ref('')
+const recordId = ref('')
 
 const defaultForm = {
   docTitle: '',
@@ -201,38 +211,84 @@ const form = reactive({ ...defaultForm })
 
 const companyName = ref('')
 
-function storageKey(): string {
-  return `print_template_${companyStore.currentCompany?.id || 'default'}`
+function toDbFields() {
+  return {
+    company: companyStore.currentCompany?.id,
+    doc_title: form.docTitle,
+    intro_text: form.introText,
+    footer_text: form.footerText,
+    signature_label_1: form.signatureLabel1,
+    signature_label_2: form.signatureLabel2,
+    signature_label_3: form.signatureLabel3,
+    include_receipts: form.includeReceipts,
+  }
 }
 
-function loadTemplate() {
+function fromDbRecord(record: any) {
+  form.docTitle = record.doc_title || ''
+  form.introText = record.intro_text || ''
+  form.footerText = record.footer_text || ''
+  form.signatureLabel1 = record.signature_label_1 || 'Solicitante'
+  form.signatureLabel2 = record.signature_label_2 || 'Aprovador'
+  form.signatureLabel3 = record.signature_label_3 || ''
+  form.includeReceipts = record.include_receipts ?? true
+}
+
+async function loadTemplate() {
   companyName.value = companyStore.currentCompany?.name || 'Empresa'
+  const companyId = companyStore.currentCompany?.id
+  if (!companyId) return
   try {
-    const raw = localStorage.getItem(storageKey())
-    if (raw) {
-      const parsed = JSON.parse(raw)
-      Object.assign(form, parsed)
+    const records = await pb.collection('print_templates').getFullList({
+      filter: `company="${companyId}"`,
+    })
+    if (records.length > 0) {
+      recordId.value = records[0].id
+      fromDbRecord(records[0])
     }
   } catch {
-    // use defaults
+    // collection may not exist yet
   }
 }
 
-function handleSave() {
+async function handleSave() {
+  const companyId = companyStore.currentCompany?.id
+  if (!companyId) return
+  saving.value = true
+  errorMsg.value = ''
   try {
-    localStorage.setItem(storageKey(), JSON.stringify({ ...form }))
+    if (recordId.value) {
+      await pb.collection('print_templates').update(recordId.value, toDbFields())
+    } else {
+      const record = await pb.collection('print_templates').create(toDbFields())
+      recordId.value = record.id
+    }
     saved.value = true
     setTimeout(() => { saved.value = false }, 3000)
-  } catch {
-    // ignore
+  } catch (e: any) {
+    errorMsg.value = e?.message || 'Erro ao salvar configurações.'
+  } finally {
+    saving.value = false
   }
 }
 
-function handleReset() {
+async function handleReset() {
+  const companyId = companyStore.currentCompany?.id
+  if (!companyId) return
   Object.assign(form, defaultForm)
-  localStorage.removeItem(storageKey())
-  saved.value = true
-  setTimeout(() => { saved.value = false }, 3000)
+  saving.value = true
+  errorMsg.value = ''
+  try {
+    if (recordId.value) {
+      await pb.collection('print_templates').update(recordId.value, toDbFields())
+    }
+    saved.value = true
+    setTimeout(() => { saved.value = false }, 3000)
+  } catch (e: any) {
+    errorMsg.value = e?.message || 'Erro ao restaurar padrão.'
+  } finally {
+    saving.value = false
+  }
 }
 
 function handlePreview() {

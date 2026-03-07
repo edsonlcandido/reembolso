@@ -291,11 +291,25 @@ const receiptGroups = computed(() => {
   return groups
 })
 
-function loadTemplate() {
-  const key = `print_template_${companyStore.currentCompany?.id || 'default'}`
+async function loadTemplate() {
+  const companyId = companyStore.currentCompany?.id
+  if (!companyId) return
   try {
-    const raw = localStorage.getItem(key)
-    if (raw) template.value = { ...template.value, ...JSON.parse(raw) }
+    const records = await pb.collection('print_templates').getFullList({
+      filter: `company="${companyId}"`,
+    })
+    if (records.length > 0) {
+      const r = records[0]
+      template.value = {
+        docTitle: r.doc_title || '',
+        introText: r.intro_text || '',
+        footerText: r.footer_text || '',
+        signatureLabel1: r.signature_label_1 || 'Solicitante',
+        signatureLabel2: r.signature_label_2 || 'Aprovador',
+        signatureLabel3: r.signature_label_3 || '',
+        includeReceipts: r.include_receipts ?? true,
+      }
+    }
   } catch { /* use defaults */ }
 }
 
@@ -338,7 +352,7 @@ onMounted(async () => {
   if (!companyStore.currentCompany) {
     await companyStore.fetchMyCompanies()
   }
-  loadTemplate()
+  await loadTemplate()
 
   if (isPreview.value) {
     loadMockData()
