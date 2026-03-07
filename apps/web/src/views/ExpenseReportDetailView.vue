@@ -279,19 +279,20 @@
                 </select>
               </div>
               <div v-if="isForeignCurrency">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Valor na moeda original ({{ itemForm.original_currency }})</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Valor ({{ itemForm.original_currency }}) <span class="text-red-500">*</span></label>
                 <input v-model="itemForm.originalAmount" type="number" step="0.01" min="0" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" placeholder="0,00" @input="triggerConversion" />
                 <p v-if="convertingCurrency" class="mt-1 text-xs text-blue-600">Convertendo...</p>
+                <p v-if="itemForm.currencyNote" class="mt-1 text-xs text-gray-500">{{ itemForm.currencyNote }}</p>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Valor</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Valor <span class="text-red-500">*</span></label>
                 <input v-model="itemForm.amountDisplay" type="number" step="0.01" min="0" required
                   :readonly="isKmCategory"
                   class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                   :class="{ 'bg-gray-50 cursor-not-allowed': isKmCategory }"
                   placeholder="0,00" />
                 <p v-if="isKmCategory" class="mt-1 text-xs text-gray-500">Calculado automaticamente: km × taxa/km</p>
-                <p v-if="isForeignCurrency && itemForm.currencyNote" class="mt-1 text-xs text-gray-500">{{ itemForm.currencyNote }}</p>
+                <p v-if="isForeignCurrency && !isKmCategory" class="mt-1 text-xs text-gray-500">Valor sugerido pela conversão. Você pode editar.</p>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Estabelecimento</label>
@@ -299,12 +300,18 @@
               </div>
             </div>
             <div v-if="isForeignCurrency" class="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-3">
-              <h4 class="text-sm font-semibold text-amber-800">IOF (3,5%)</h4>
+              <div class="flex items-center gap-2">
+                <span class="text-amber-600 font-semibold text-sm">💱 IOF (3,5%)</span>
+              </div>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-sm font-medium text-amber-700 mb-1">Valor IOF (R$)</label>
-                  <input v-model="itemForm.iofAmount" type="number" step="0.01" min="0" class="w-full rounded-lg border border-amber-300 px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-200" placeholder="0,00" />
-                  <p class="mt-1 text-xs text-amber-600">Calculado automaticamente, mas pode ser editado.</p>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Valor IOF (R$)</label>
+                  <input v-model="itemForm.iofAmount" type="number" step="0.01" min="0" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" placeholder="0,00" />
+                  <p class="mt-1 text-xs text-gray-500">Calculado automaticamente (3,5% do valor em BRL). Você pode editar.</p>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Descrição IOF</label>
+                  <input :value="iofDescription" type="text" readonly class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 bg-gray-50 cursor-not-allowed focus:border-blue-500 focus:ring-2 focus:ring-blue-200" />
                 </div>
               </div>
             </div>
@@ -842,11 +849,18 @@ const isForeignCurrency = computed(() => itemForm.value.original_currency !== 'B
 const isEditForeignCurrency = computed(() => editItemForm.value.original_currency !== '' && editItemForm.value.original_currency !== 'BRL')
 
 const supportedCurrencies = [
-  { code: 'BRL', label: 'BRL - Real Brasileiro' },
-  { code: 'USD', label: 'USD - Dólar Americano' },
-  { code: 'EUR', label: 'EUR - Euro' },
-  { code: 'CLP', label: 'CLP - Peso Chileno' },
+  { code: 'BRL', label: '🇧🇷 BRL - Real' },
+  { code: 'USD', label: '🇺🇸 USD - Dólar' },
+  { code: 'EUR', label: '🇪🇺 EUR - Euro' },
+  { code: 'CLP', label: '🇨🇱 CLP - Peso Chileno' },
 ]
+
+const iofDescription = computed(() => {
+  const orig = parseFloat(itemForm.value.originalAmount || '0')
+  const cur = itemForm.value.original_currency
+  if (orig > 0 && cur && cur !== 'BRL') return `IOF compra ${orig} ${cur}`
+  return ''
+})
 
 async function fetchConversion(amount: number, from: string, to: string) {
   try {
