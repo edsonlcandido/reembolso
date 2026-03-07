@@ -322,7 +322,7 @@ function loadMockData() {
     { id: 'cat4', name: 'Material', icon: '📦' },
   ] as any[]
 
-  const sampleImg = '/receipt-sample.png'
+  const sampleImg = '/app/receipt-sample.png'
   items.value = [
     { id: '1', date: '2025-04-01T00:00:00Z', merchant: 'Restaurante Sabor & Cia', category: 'cat1', description: 'Almoço com cliente', amount: 15620, receipt_image: 'mock', _imageUrl: sampleImg },
     { id: '2', date: '2025-04-01T00:00:00Z', merchant: '99 Táxi', category: 'cat2', description: 'Traslado aeroporto — hotel', amount: 8700, receipt_image: 'mock', _imageUrl: sampleImg },
@@ -669,24 +669,33 @@ onMounted(async () => {
 }
 
 /* Receipts page */
-.receipts-page { padding: 32px 40px; min-height: unset; }
+.receipts-page {
+  padding: 28px 36px;
+  min-height: 270mm;
+  display: flex;
+  flex-direction: column;
+}
 
 .receipts-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding-bottom: 8px;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
   border-bottom: 2px solid #2563eb;
+  flex-shrink: 0;
 }
 
 .receipts-company { font-size: 11px; font-weight: 700; color: #2563eb; text-transform: uppercase; letter-spacing: 0.08em; }
 .receipts-label { font-size: 11px; color: #6b7280; }
 
 .receipts-grid {
+  flex: 1;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  grid-template-rows: 1fr 1fr;
+  gap: 12px;
+  min-height: 0;
 }
 
 .receipt-card {
@@ -696,23 +705,22 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   background: white;
+  min-height: 0;
 }
 
 .receipt-card-empty {
   background: #f9fafb;
   border-style: dashed;
-  min-height: 200px;
 }
 
 .receipt-img-wrap {
   flex: 1;
+  min-height: 0;
   background: #f3f4f6;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  min-height: 160px;
-  max-height: 210px;
 }
 
 .receipt-img { width: 100%; height: 100%; object-fit: contain; display: block; }
@@ -739,7 +747,7 @@ onMounted(async () => {
 
 /* Print styles */
 @media print {
-  @page { size: A4; margin: 10mm 12mm; }
+  @page { size: A4 portrait; margin: 10mm 12mm; }
 
   .no-print { display: none !important; }
 
@@ -759,13 +767,15 @@ onMounted(async () => {
 
   .print-page:last-child { page-break-after: auto; }
 
-  .receipts-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    height: 240mm;
+  .receipts-page {
+    padding: 10mm 12mm;
+    height: 277mm;
+    min-height: unset;
   }
 
-  .receipt-img-wrap { max-height: 160px; }
+  .receipts-grid {
+    height: calc(277mm - 36px);
+    min-height: unset;
+  }
 }
 </style>
