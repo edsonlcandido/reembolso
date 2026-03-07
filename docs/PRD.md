@@ -230,6 +230,21 @@ Com o avanço de tecnologias de IA e OCR, há uma oportunidade clara de:
 - [ ] Indicador de confiança da extração
 - [ ] Fallback para digitação manual se OCR falhar
 
+#### RF010.1 - Multi-Moeda e IOF
+**Descrição:** Suporte a lançamento de despesas em moedas estrangeiras com conversão para BRL e criação automática de IOF  
+**Prioridade:** Alta  
+**Critérios de Aceitação:**
+- [x] Moedas suportadas: BRL, CLP, USD, EUR
+- [x] Seletor de moeda no formulário de despesa (default BRL)
+- [x] Conversão automática com taxas hardcoded via endpoint `POST /api/currency/convert`
+- [x] Valor em BRL editável pelo funcionário após sugestão
+- [x] IOF de 3,5% calculado automaticamente para despesas estrangeiras, editável antes do envio
+- [x] IOF criado como item separado na categoria "Taxas"
+- [x] Validação backend: moedas inválidas retornam erro; despesas estrangeiras exigem dados de conversão
+- [x] Exibição de badge de moeda e valor original na listagem de itens
+- [x] Impressão exibe valor na moeda de origem abaixo da descrição
+- [x] Fluxo BRL puro continua funcionando sem mudanças
+
 #### RF012 - Submissão de Relatório
 **Descrição:** Enviar relatório para aprovação  
 **Prioridade:** Alta  
@@ -465,7 +480,7 @@ Com o avanço de tecnologias de IA e OCR, há uma oportunidade clara de:
 }
 ```
 
-> **Categorias padrão:** Ao criar uma empresa, o sistema cria automaticamente 6 categorias padrão: Alimentação, Transporte, Hospedagem, Material, Quilometragem e Outros. Essas categorias são armazenadas na collection `categories` com os nomes em português. O campo `category` de `expense_items` usa os valores do select (`food`, `transport`, `lodging`, `supplies`, `other`) — as categorias da collection são para agrupamento e exibição customizável.
+> **Categorias padrão:** Ao criar uma empresa, o sistema cria automaticamente 7 categorias padrão: Alimentação, Transporte, Hospedagem, Material, Quilometragem, Outros e Taxas. A categoria "Taxas" (💱, cor #f59e0b) é utilizada para lançamentos de IOF em despesas com moeda estrangeira. Essas categorias são armazenadas na collection `categories` com os nomes em português. O campo `category` de `expense_items` usa os valores do select (`food`, `transport`, `lodging`, `supplies`, `other`) — as categorias da collection são para agrupamento e exibição customizável.
 
 #### Collection: expense_reports
 ```typescript
@@ -507,6 +522,11 @@ Com o avanço de tecnologias de IA e OCR, há uma oportunidade clara de:
   ocr_processed: boolean
   notes: text
   km: number              // km percorridos (para despesas de deslocamento)
+  original_currency: text  // moeda original (default "BRL"); suportadas: BRL, CLP, USD, EUR
+  original_amount: number  // valor na moeda original (obrigatório se != BRL)
+  suggested_brl_amount: number  // valor sugerido em BRL pela conversão (obrigatório se != BRL)
+  conversion_rate: number  // taxa de conversão aplicada (obrigatório se != BRL)
+  currency_note: text      // nota descritiva da conversão (ex: "Compra em CLP 27.000")
   paid: boolean
   paid_by: relation(users)
   paid_at: datetime
@@ -573,6 +593,12 @@ routerAdd("POST", "/api/users/find-by-email", (e) => { ... })
 routerAdd("POST", "/api/ai/read-receipt", (e) => {
   // Lê imagem base64, chama OpenRouter LLM, retorna dados extraídos
 })
+
+// POST /api/currency/convert — Conversão de moeda com taxas hardcoded
+routerAdd("POST", "/api/currency/convert", (e) => {
+  // Recebe { amount, from, to }, retorna { brl_amount, conversion_rate, note }
+  // Moedas suportadas: BRL, CLP, USD, EUR
+})
 ```
 
 #### hooksExpenseReports.pb.js — Workflow de Relatórios
@@ -599,8 +625,8 @@ onRecordCreateRequest((e) => {
 
 #### hooksCompanies.pb.js — Empresa
 ```javascript
-// Cria 6 categorias padrão ao criar empresa:
-// Alimentação, Transporte, Hospedagem, Material, Quilometragem, Outros
+// Cria 7 categorias padrão ao criar empresa:
+// Alimentação, Transporte, Hospedagem, Material, Quilometragem, Outros, Taxas
 onRecordAfterCreateSuccess((e) => { ... })
 ```
 
@@ -609,6 +635,13 @@ onRecordAfterCreateSuccess((e) => { ... })
 // Calcula amount automaticamente para despesas de km:
 // amount = km × company.km_rate
 onRecordCreateRequest((e) => { ... })
+
+// Valida campos de multi-moeda:
+// - Moedas suportadas: BRL, CLP, USD, EUR
+// - Despesas estrangeiras exigem original_amount, suggested_brl_amount, conversion_rate
+// - Defaults seguros para BRL (campos opcionais zerados)
+onRecordCreateRequest(validateCurrencyFields, "expense_items")
+onRecordUpdateRequest(validateCurrencyFields, "expense_items")
 ```
 
 ---

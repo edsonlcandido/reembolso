@@ -557,3 +557,52 @@ routerAdd("POST", "/api/expense-reports/notify", (e) => {
 
   return e.json(200, { success: true, message: "Notificação enviada para " + targetEmail })
 }, $apis.requireAuth())
+
+routerAdd("POST", "/api/currency/convert", (e) => {
+  const body = e.requestInfo().body
+  const amount = body.amount
+  const from = body.from
+  const to = body.to
+
+  if (amount == null || !from || !to) {
+    return e.json(400, { error: "Campos obrigatórios: amount, from, to" })
+  }
+
+  if (typeof amount !== "number" || amount <= 0) {
+    return e.json(400, { error: "amount deve ser um número positivo" })
+  }
+
+  const supportedCurrencies = ["BRL", "CLP", "USD", "EUR"]
+
+  if (supportedCurrencies.indexOf(from) === -1) {
+    return e.json(400, { error: "Moeda de origem não suportada: " + from + ". Suportadas: " + supportedCurrencies.join(", ") })
+  }
+
+  if (supportedCurrencies.indexOf(to) === -1) {
+    return e.json(400, { error: "Moeda de destino não suportada: " + to + ". Suportadas: " + supportedCurrencies.join(", ") })
+  }
+
+  const ratesToBRL = {
+    "BRL": 1.0,
+    "USD": 5.65,
+    "EUR": 6.20,
+    "CLP": 0.006,
+  }
+
+  const amountInBRL = amount * ratesToBRL[from] / ratesToBRL[to]
+  const conversionRate = ratesToBRL[from] / ratesToBRL[to]
+
+  const brlAmount = Math.round(amountInBRL * 100) / 100
+  const roundedRate = Math.round(conversionRate * 1000000) / 1000000
+
+  let note = ""
+  if (from !== to) {
+    note = "Compra em " + from + " " + amount.toLocaleString("pt-BR") + " (taxa: 1 " + from + " = " + roundedRate.toFixed(4) + " " + to + ")"
+  }
+
+  return e.json(200, {
+    brl_amount: brlAmount,
+    conversion_rate: roundedRate,
+    note: note,
+  })
+}, $apis.requireAuth())

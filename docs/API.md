@@ -558,6 +558,11 @@ GET /api/collections/expense_items/records
       "ocr_processed": true,
       "notes": "",
       "km": 0,
+      "original_currency": "BRL",
+      "original_amount": 0,
+      "suggested_brl_amount": 0,
+      "conversion_rate": 0,
+      "currency_note": "",
       "paid": false,
       "paid_by": null,
       "paid_at": null,
@@ -569,7 +574,8 @@ GET /api/collections/expense_items/records
 ```
 
 > **Campo `km`:** Para despesas de deslocamento, o campo `km` registra a distância percorrida. O `amount` é calculado automaticamente via hook: `km × company.km_rate`.  
-> **Campos de pagamento:** `paid`, `paid_by` e `paid_at` são atualizados quando o aprovador marca o item como pago.
+> **Campos de pagamento:** `paid`, `paid_by` e `paid_at` são atualizados quando o aprovador marca o item como pago.  
+> **Campos de multi-moeda:** `original_currency` indica a moeda original da despesa (default `BRL`). Quando diferente de BRL, os campos `original_amount`, `suggested_brl_amount`, `conversion_rate` e `currency_note` devem ser preenchidos. Moedas suportadas: `BRL`, `CLP`, `USD`, `EUR`.
 
 #### 6.2 Criar Item de Despesa (com OCR)
 ```http
@@ -582,7 +588,7 @@ POST /api/collections/expense_items/records
   "report": "rep123",
   "date": "2026-02-10T19:00:00Z",
   "category": "transport",
-  "receipt_image": <file>,
+  "receipt_image": "<file>",
   "description": "Táxi aeroporto"
 }
 ```
@@ -600,6 +606,45 @@ POST /api/collections/expense_items/records
 ```
 
 > **Nota:** O processamento OCR é feito de forma **síncrona** via endpoint customizado `POST /api/ai/read-receipt` (ver Seção 9.3). O frontend envia a imagem em base64, recebe os dados extraídos, e os usa para pré-preencher o formulário antes de criar o item.
+
+#### 6.5 Criar Item de Despesa em Moeda Estrangeira (com IOF)
+
+Ao criar uma despesa em moeda estrangeira, o frontend deve:
+1. Chamar `POST /api/currency/convert` para obter a sugestão de valor em BRL e taxa de conversão.
+2. Criar o item principal com os campos de multi-moeda preenchidos.
+3. Após sucesso, criar um segundo item de IOF (3,5%) na categoria "Taxas".
+
+**Body do item principal (moeda estrangeira):**
+```json
+{
+  "report": "rep123",
+  "date": "2026-02-10T19:00:00Z",
+  "category": "food",
+  "amount": 16200,
+  "description": "Jantar em Santiago",
+  "original_currency": "CLP",
+  "original_amount": 27000,
+  "suggested_brl_amount": 16200,
+  "conversion_rate": 0.006,
+  "currency_note": "Compra em CLP 27.000 (taxa: 1 CLP = 0.0060 BRL)"
+}
+```
+
+**Body do item de IOF (criado sequencialmente após o principal):**
+```json
+{
+  "report": "rep123",
+  "date": "2026-02-10T19:00:00Z",
+  "category": "cat_taxas_id",
+  "amount": 567,
+  "description": "IOF compra 27000 CLP",
+  "original_currency": "BRL"
+}
+```
+
+> **IOF:** O IOF é calculado como 3,5% do valor em BRL da despesa original. O valor é editável pelo funcionário antes do envio. A categoria utilizada é "Taxas" (criada automaticamente para novas empresas). O IOF aparece como item normal na listagem.
+
+> **Validações backend:** Para itens com `original_currency` diferente de `BRL`, os campos `original_amount`, `suggested_brl_amount` e `conversion_rate` são obrigatórios e devem ser maiores que zero. Moedas suportadas: `BRL`, `CLP`, `USD`, `EUR`. Moedas inválidas retornam erro 400.
 
 #### 6.3 Atualizar Item (após revisão OCR)
 ```http
@@ -833,6 +878,60 @@ Authorization: YOUR_AUTH_TOKEN
 ```
 
 > **Configuração:** A chave da API é armazenada na collection `system_variables` com `key=OPENROUTER_API_KEY`. Deve ser configurada via PocketBase Admin UI.
+
+#### 9.4 Conversão de Moeda
+```http
+POST /api/currency/convert
+```
+
+Converte um valor de uma moeda para outra usando taxas fixas. Usado pelo frontend para sugerir o valor em BRL ao criar despesas em moeda estrangeira.
+
+**Headers:**
+```
+Authorization: YOUR_AUTH_TOKEN
+```
+
+**Body:**
+```json
+{
+  "amount": 27000,
+  "from": "CLP",
+  "to": "BRL"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "brl_amount": 162.0,
+  "conversion_rate": 0.006,
+  "note": "Compra em CLP 27.000 (taxa: 1 CLP = 0.0060 BRL)"
+}
+```
+
+**Moedas suportadas:** `BRL`, `CLP`, `USD`, `EUR`
+
+**Taxas de conversão para BRL (hardcoded):**
+| Moeda | Taxa para BRL |
+|-------|--------------|
+| BRL   | 1.00         |
+| USD   | 5.65         |
+| EUR   | 6.20         |
+| CLP   | 0.006        |
+
+**Response (400 Bad Request — moeda inválida):**
+```json
+{
+  "error": "Moeda de origem não suportada: GBP. Suportadas: BRL, CLP, USD, EUR"
+}
+```
+
+**Response (400 Bad Request — amount inválido):**
+```json
+{
+  "error": "amount deve ser um número positivo"
+}
+```
 
 ---
 

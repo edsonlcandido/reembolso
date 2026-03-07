@@ -49,8 +49,8 @@ PocketBase collections created via migrations:
 - **company_users**: User-company relationship (role: admin/approver/employee)
 - **approvers**: Approval workflow (level, max_amount, delegates_to)
 - **expense_reports**: Expense reports (title, period, status, total_amount)
-- **expense_items**: Individual expenses (amount, category, receipt_image, OCR data)
-- **categories**: Custom expense categories per company
+- **expense_items**: Individual expenses (amount, category, receipt_image, OCR data, multi-currency: original_currency, original_amount, suggested_brl_amount, conversion_rate, currency_note)
+- **categories**: Custom expense categories per company (7 defaults including "Taxas" for IOF)
 - **audit_logs**: Complete audit trail
 - **print_templates**: Print/PDF report template per company (doc_title, intro_text, footer_text, signature labels, include_receipts)
 
@@ -82,6 +82,7 @@ PocketBase collections created via migrations:
 - Fixed IPv4/IPv6 proxy issue (web app host: 127.0.0.1)
 - Configured for Replit environment (ports, hosts, proxy settings)
 - Added print/PDF report system: PrintTemplateView (admin-only template config), PrintReportView (standalone print layout with receipts 4-per-page), print button in ExpenseReportDetailView, "Modelo de Impressão" nav item for admins
+- Added multi-currency support (BRL, CLP, USD, EUR): currency conversion endpoint, IOF 3.5% auto-calculation (editable by employee), multi-currency form in AddExpenseView and ExpenseReportDetailView, currency badges in item listing, muted original currency text in print view
 
 ## Print/PDF System
 - **PrintTemplateView** (`/print-template`, admin only): Configure document title, intro text, footer text, signature labels, receipt inclusion toggle. Settings stored in PocketBase `print_templates` collection (1 record per company, unique index).

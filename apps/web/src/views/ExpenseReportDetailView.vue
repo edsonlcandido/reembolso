@@ -273,6 +273,17 @@
                 <p v-else class="mt-1 text-xs text-amber-600">Taxa por km não configurada na empresa.</p>
               </div>
               <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Moeda</label>
+                <select v-model="itemForm.original_currency" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                  <option v-for="cur in supportedCurrencies" :key="cur.code" :value="cur.code">{{ cur.label }}</option>
+                </select>
+              </div>
+              <div v-if="isForeignCurrency">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Valor na moeda original ({{ itemForm.original_currency }})</label>
+                <input v-model="itemForm.originalAmount" type="number" step="0.01" min="0" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" placeholder="0,00" @input="triggerConversion" />
+                <p v-if="convertingCurrency" class="mt-1 text-xs text-blue-600">Convertendo...</p>
+              </div>
+              <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
                 <input v-model="itemForm.amountDisplay" type="number" step="0.01" min="0" required
                   :readonly="isKmCategory"
@@ -280,10 +291,21 @@
                   :class="{ 'bg-gray-50 cursor-not-allowed': isKmCategory }"
                   placeholder="0,00" />
                 <p v-if="isKmCategory" class="mt-1 text-xs text-gray-500">Calculado automaticamente: km × taxa/km</p>
+                <p v-if="isForeignCurrency && itemForm.currencyNote" class="mt-1 text-xs text-gray-500">{{ itemForm.currencyNote }}</p>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Estabelecimento</label>
                 <input v-model="itemForm.merchant" type="text" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" placeholder="Nome do estabelecimento" />
+              </div>
+            </div>
+            <div v-if="isForeignCurrency" class="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+              <h4 class="text-sm font-semibold text-amber-800">IOF (3,5%)</h4>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-amber-700 mb-1">Valor IOF (R$)</label>
+                  <input v-model="itemForm.iofAmount" type="number" step="0.01" min="0" class="w-full rounded-lg border border-amber-300 px-4 py-2.5 text-gray-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-200" placeholder="0,00" />
+                  <p class="mt-1 text-xs text-amber-600">Calculado automaticamente, mas pode ser editado.</p>
+                </div>
               </div>
             </div>
             <div>
@@ -341,6 +363,9 @@
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-3 mb-1">
                       <span class="font-semibold text-gray-900">{{ formatCurrency(item.amount || 0) }}</span>
+                      <span v-if="item.original_currency && item.original_currency !== 'BRL'" class="px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-xs font-medium">
+                        {{ item.original_currency }}
+                      </span>
                       <span v-if="item.category" class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
                         {{ categoryLabel(item.category) }}
                       </span>
@@ -348,6 +373,9 @@
                         Pago
                       </span>
                     </div>
+                    <p v-if="item.original_currency && item.original_currency !== 'BRL' && item.original_amount" class="text-sm text-amber-600">
+                      {{ item.currency_note || `${item.original_currency} ${Number(item.original_amount).toLocaleString('pt-BR')}` }}
+                    </p>
                     <p v-if="item.merchant" class="text-sm text-gray-600">{{ item.merchant }}</p>
                     <p v-if="item.description" class="text-sm text-gray-500">{{ item.description }}</p>
                     <p v-if="item.km" class="text-xs text-emerald-600 mt-0.5">🛣️ {{ item.km }} km</p>
@@ -691,6 +719,20 @@
               <input v-model="editItemForm.merchant" type="text" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" placeholder="Nome do estabelecimento" />
             </div>
           </div>
+          <div v-if="isEditForeignCurrency" class="rounded-xl border border-blue-200 bg-blue-50 p-4 space-y-3">
+            <h4 class="text-sm font-semibold text-blue-800">Dados de moeda estrangeira ({{ editItemForm.original_currency }})</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-blue-700 mb-1">Valor original ({{ editItemForm.original_currency }})</label>
+                <input v-model="editItemForm.originalAmount" type="number" step="0.01" min="0" class="w-full rounded-lg border border-blue-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" placeholder="0,00" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-blue-700 mb-1">Taxa de conversão</label>
+                <input v-model="editItemForm.conversionRate" type="number" step="0.000001" min="0" class="w-full rounded-lg border border-blue-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-gray-50" readonly />
+              </div>
+            </div>
+            <p v-if="editItemForm.currencyNote" class="text-xs text-blue-600">{{ editItemForm.currencyNote }}</p>
+          </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
             <input v-model="editItemForm.description" type="text" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" placeholder="Descrição da despesa" />
@@ -767,6 +809,11 @@ const editItemForm = ref({
   description: '',
   notes: '',
   km: '',
+  original_currency: 'BRL',
+  originalAmount: '',
+  suggestedBrlAmount: '',
+  conversionRate: '',
+  currencyNote: '',
 })
 
 const itemForm = ref({
@@ -777,7 +824,65 @@ const itemForm = ref({
   description: '',
   notes: '',
   km: '',
+  original_currency: 'BRL',
+  originalAmount: '',
+  suggestedBrlAmount: '',
+  conversionRate: '',
+  currencyNote: '',
+  iofAmount: '',
 })
+
+const convertingCurrency = ref(false)
+let conversionDebounceTimer: ReturnType<typeof setTimeout> | null = null
+
+const isForeignCurrency = computed(() => itemForm.value.original_currency !== 'BRL')
+const isEditForeignCurrency = computed(() => editItemForm.value.original_currency !== '' && editItemForm.value.original_currency !== 'BRL')
+
+const supportedCurrencies = [
+  { code: 'BRL', label: 'BRL - Real Brasileiro' },
+  { code: 'USD', label: 'USD - Dólar Americano' },
+  { code: 'EUR', label: 'EUR - Euro' },
+  { code: 'CLP', label: 'CLP - Peso Chileno' },
+]
+
+async function fetchConversion(amount: number, from: string, to: string) {
+  try {
+    convertingCurrency.value = true
+    const data = await pb.send('/api/currency/convert', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount, from, to }),
+    })
+    return data
+  } catch (err: any) {
+    errorMsg.value = err?.message || 'Erro ao converter moeda.'
+    return null
+  } finally {
+    convertingCurrency.value = false
+  }
+}
+
+function triggerConversion() {
+  if (conversionDebounceTimer) clearTimeout(conversionDebounceTimer)
+  conversionDebounceTimer = setTimeout(async () => {
+    const amount = parseFloat(itemForm.value.originalAmount || '0')
+    if (amount <= 0 || !isForeignCurrency.value) return
+    const data = await fetchConversion(amount, itemForm.value.original_currency, 'BRL')
+    if (data) {
+      itemForm.value.suggestedBrlAmount = String(data.brl_amount)
+      itemForm.value.amountDisplay = String(data.brl_amount)
+      itemForm.value.conversionRate = String(data.conversion_rate)
+      itemForm.value.currencyNote = data.note || ''
+      const iof = Math.round(data.brl_amount * 3.5) / 100
+      itemForm.value.iofAmount = iof.toFixed(2)
+    }
+  }, 500)
+}
+
+function findTaxesCategoryId(): string {
+  const cat = categories.value.find(c => c.name?.toLowerCase() === 'taxas')
+  return cat?.id || ''
+}
 
 const report = computed(() => expensesStore.currentReport)
 
@@ -1046,7 +1151,7 @@ async function analyzeWithAI() {
 }
 
 function resetItemForm() {
-  itemForm.value = { date: '', category: '', amountDisplay: '', merchant: '', description: '', notes: '', km: '' }
+  itemForm.value = { date: '', category: '', amountDisplay: '', merchant: '', description: '', notes: '', km: '', original_currency: 'BRL', originalAmount: '', suggestedBrlAmount: '', conversionRate: '', currencyNote: '', iofAmount: '' }
   receiptFile.value = null
   if (fileInputRef.value) fileInputRef.value.value = ''
   if (cameraInputRef.value) cameraInputRef.value.value = ''
@@ -1076,8 +1181,35 @@ async function handleAddItem() {
     km: isKmCategory.value && itemForm.value.km ? parseFloat(itemForm.value.km) : undefined,
   }
 
+  if (isForeignCurrency.value) {
+    data.original_currency = itemForm.value.original_currency
+    data.original_amount = parseFloat(itemForm.value.originalAmount || '0')
+    data.suggested_brl_amount = amountCents
+    data.conversion_rate = parseFloat(itemForm.value.conversionRate || '0')
+    data.currency_note = itemForm.value.currencyNote || ''
+  }
+
   try {
-    if (receiptFile.value) {
+    if (isForeignCurrency.value && !receiptFile.value) {
+      const iofAmountCents = Math.round(parseFloat(itemForm.value.iofAmount || '0') * 100)
+      const originalAmt = itemForm.value.originalAmount || '0'
+      const iofData = {
+        report: report.value.id,
+        amount: iofAmountCents,
+        date: itemForm.value.date || undefined,
+        category: findTaxesCategoryId() || undefined,
+        description: `IOF compra ${originalAmt} ${itemForm.value.original_currency}`,
+      }
+      const result = await expensesStore.addItemWithIOF(data, iofData)
+      if (result.success) {
+        await loadReport()
+        successMsg.value = 'Despesa e IOF adicionados com sucesso!'
+        showItemForm.value = false
+        resetItemForm()
+      } else {
+        errorMsg.value = result.error || 'Erro ao adicionar despesa.'
+      }
+    } else if (receiptFile.value) {
       const formData = new FormData()
       Object.entries(data).forEach(([key, value]) => {
         if (value !== undefined) formData.append(key, String(value))
@@ -1085,6 +1217,19 @@ async function handleAddItem() {
       formData.append('receipt_image', receiptFile.value)
       await pb.collection('expense_items').create(formData)
       await expensesStore.recalculateTotal(report.value.id)
+
+      if (isForeignCurrency.value) {
+        const iofAmountCents = Math.round(parseFloat(itemForm.value.iofAmount || '0') * 100)
+        const originalAmt = itemForm.value.originalAmount || '0'
+        await expensesStore.addItem({
+          report: report.value.id,
+          amount: iofAmountCents,
+          date: itemForm.value.date || undefined,
+          category: findTaxesCategoryId() || undefined,
+          description: `IOF compra ${originalAmt} ${itemForm.value.original_currency}`,
+        })
+      }
+
       await loadReport()
       successMsg.value = 'Despesa adicionada com sucesso!'
       showItemForm.value = false
@@ -1135,6 +1280,11 @@ function openEditItemModal(item: RecordModel) {
     description: item.description || '',
     notes: item.notes || '',
     km: item.km ? String(item.km) : '',
+    original_currency: item.original_currency || 'BRL',
+    originalAmount: item.original_amount ? String(item.original_amount) : '',
+    suggestedBrlAmount: item.suggested_brl_amount ? String(item.suggested_brl_amount / 100) : '',
+    conversionRate: item.conversion_rate ? String(item.conversion_rate) : '',
+    currencyNote: item.currency_note || '',
   }
   showEditItemModal.value = true
 }
@@ -1157,7 +1307,7 @@ async function handleUpdateItem() {
 
   submitting.value = true
   try {
-    const result = await expensesStore.updateItem(editingItem.value.id, {
+    const updateData: Record<string, any> = {
       amount: amountCents,
       date: editItemForm.value.date || undefined,
       category: editItemForm.value.category || undefined,
@@ -1165,7 +1315,23 @@ async function handleUpdateItem() {
       description: editItemForm.value.description || undefined,
       notes: editItemForm.value.notes || undefined,
       km: isEditKmCategory.value && editItemForm.value.km ? parseFloat(editItemForm.value.km) : undefined,
-    })
+    }
+
+    if (isEditForeignCurrency.value) {
+      updateData.original_currency = editItemForm.value.original_currency
+      updateData.original_amount = parseFloat(editItemForm.value.originalAmount || '0')
+      updateData.suggested_brl_amount = amountCents
+      updateData.conversion_rate = parseFloat(editItemForm.value.conversionRate || '0')
+      updateData.currency_note = editItemForm.value.currencyNote || ''
+    } else {
+      updateData.original_currency = 'BRL'
+      updateData.original_amount = 0
+      updateData.suggested_brl_amount = 0
+      updateData.conversion_rate = 0
+      updateData.currency_note = ''
+    }
+
+    const result = await expensesStore.updateItem(editingItem.value.id, updateData)
     if (result.success) {
       successMsg.value = 'Despesa atualizada com sucesso!'
       closeEditItemModal()
