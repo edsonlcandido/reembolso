@@ -327,7 +327,7 @@ function loadMockData() {
     period_end: '2025-04-05T00:00:00.000Z',
     cost_center: 'Comercial',
     project: 'Expansão SP',
-    total_amount: 87230,
+    total_amount: 96980,
     advance_amount: 30000,
     company: '',
   } as any
@@ -337,6 +337,7 @@ function loadMockData() {
     { id: 'cat2', name: 'Transporte', icon: '🚗' },
     { id: 'cat3', name: 'Hospedagem', icon: '🏨' },
     { id: 'cat4', name: 'Material', icon: '📦' },
+    { id: 'cat5', name: 'Quilometragem', icon: '📍' },
   ] as any[]
 
   const sampleImg = '/app/receipt-sample.png'
@@ -346,7 +347,8 @@ function loadMockData() {
     { id: '3', date: '2025-04-02T00:00:00Z', merchant: 'Hotel Paulista Inn', category: 'cat3', description: 'Hospedagem 2 noites', amount: 39000, receipt_image: 'mock', _imageUrl: sampleImg },
     { id: '4', date: '2025-04-02T00:00:00Z', merchant: 'Papelaria Central', category: 'cat4', description: 'Material para reunião', amount: 3210, receipt_image: 'mock', _imageUrl: sampleImg },
     { id: '5', date: '2025-04-03T00:00:00Z', merchant: 'Restaurante Sabor & Cia', category: 'cat1', description: 'Jantar com equipe', amount: 21400, receipt_image: 'mock', _imageUrl: sampleImg },
-    { id: '6', date: '2025-04-04T00:00:00Z', merchant: 'Uber', category: 'cat2', description: 'Deslocamento interno', amount: -700 + 700, receipt_image: '', _imageUrl: '' },
+    { id: '6', date: '2025-04-03T00:00:00Z', merchant: '', category: 'cat5', description: 'Visita ao cliente ABC — ida e volta (45 km)', amount: 6750, km: 45, receipt_image: '', _imageUrl: '' },
+    { id: '7', date: '2025-04-04T00:00:00Z', merchant: 'Uber', category: 'cat2', description: 'Deslocamento interno', amount: 2300, receipt_image: '', _imageUrl: '' },
   ] as any[]
 }
 
