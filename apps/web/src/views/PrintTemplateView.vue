@@ -97,7 +97,7 @@
             </label>
           </div>
 
-          <div class="flex justify-end gap-3 pt-2 border-t border-gray-100">
+          <div class="flex justify-between items-center gap-3 pt-2 border-t border-gray-100">
             <button
               type="button"
               @click="handleReset"
@@ -105,12 +105,21 @@
             >
               Restaurar Padrão
             </button>
-            <button
-              type="submit"
-              class="rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg hover:from-blue-700 hover:to-purple-700 transition-all"
-            >
-              Salvar Configurações
-            </button>
+            <div class="flex gap-3">
+              <button
+                type="button"
+                @click="handlePreview"
+                class="rounded-lg border border-blue-300 px-5 py-2.5 text-sm font-semibold text-blue-700 hover:bg-blue-50 transition-all"
+              >
+                🖥️ Pré-visualizar com dados de exemplo
+              </button>
+              <button
+                type="submit"
+                class="rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg hover:from-blue-700 hover:to-purple-700 transition-all"
+              >
+                Salvar Configurações
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -119,17 +128,35 @@
     <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
       <div class="px-8 py-5 border-b border-gray-100">
         <h2 class="text-lg font-semibold text-gray-900">Pré-visualização do Cabeçalho</h2>
-        <p class="text-sm text-gray-500 mt-0.5">Como o cabeçalho aparecerá no relatório impresso</p>
+        <p class="text-sm text-gray-500 mt-0.5">Amostra de como o relatório será apresentado</p>
       </div>
       <div class="p-8">
-        <div class="border border-gray-200 rounded-lg p-6 bg-gray-50 font-serif">
-          <div class="text-center border-b border-gray-300 pb-4 mb-4">
-            <p class="text-base font-bold text-gray-900 uppercase tracking-wide">{{ companyName }}</p>
-            <p class="text-xl font-bold text-gray-900 mt-1">RELATÓRIO DE DESPESAS</p>
-            <p class="text-sm text-gray-500 mt-1">Título do Relatório</p>
+        <div class="border border-gray-200 rounded-lg overflow-hidden bg-white" style="font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;">
+          <div class="flex justify-between items-start p-5 border-b-2 border-blue-600">
+            <div>
+              <p class="text-xs font-bold text-gray-400 uppercase tracking-widest">{{ companyName }}</p>
+              <p class="text-xl font-extrabold text-gray-900 mt-0.5 tracking-tight">Relatório de Despesas</p>
+            </div>
+            <div class="text-right">
+              <span class="inline-block text-xs font-bold uppercase tracking-wider bg-green-100 text-green-700 rounded-full px-3 py-1">Aprovado</span>
+              <p class="text-2xl font-extrabold text-blue-600 mt-1">R$ 872,30</p>
+            </div>
           </div>
-          <p v-if="form.introText" class="text-sm text-gray-700 italic">{{ form.introText }}</p>
-          <p v-else class="text-sm text-gray-400 italic">[ Texto de introdução aparecerá aqui ]</p>
+          <div class="bg-blue-50 mx-4 mt-4 rounded-lg p-3 text-xs text-gray-700 border-l-2 border-blue-600" v-if="form.introText">
+            {{ form.introText }}
+          </div>
+          <div class="bg-gray-50 mx-4 mt-4 rounded-lg p-3 text-xs text-gray-400 italic border border-dashed border-gray-200" v-else>
+            Texto de introdução aparecerá aqui após ser configurado
+          </div>
+          <div class="p-4 pb-5">
+            <p class="text-xs font-bold text-blue-600 uppercase tracking-widest border-b border-blue-100 pb-1 mb-2">Despesas</p>
+            <div class="space-y-1">
+              <div v-for="row in previewRows" :key="row.label" class="flex justify-between text-xs text-gray-600">
+                <span>{{ row.label }}</span>
+                <span class="font-semibold">{{ row.value }}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -137,9 +164,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useCompanyStore } from '../stores/company'
 
+const router = useRouter()
 const companyStore = useCompanyStore()
 const saved = ref(false)
 
@@ -189,6 +218,19 @@ function handleReset() {
   saved.value = true
   setTimeout(() => { saved.value = false }, 3000)
 }
+
+function handlePreview() {
+  const url = router.resolve({ name: 'print-report', params: { id: 'preview' }, query: { preview: '1' } }).href
+  window.open(url, '_blank')
+}
+
+const previewRows = computed(() => [
+  { label: '28/04 · Restaurante Sabor & Cia · Alimentação', value: 'R$ 156,20' },
+  { label: '29/04 · 99 Táxi · Transporte', value: 'R$ 87,00' },
+  { label: '29/04 · Hotel Paulista Inn · Hospedagem', value: 'R$ 390,00' },
+  { label: '30/04 · Papelaria Central · Material', value: 'R$ 32,10' },
+  { label: '01/05 · Restaurante Sabor & Cia · Alimentação', value: 'R$ 207,00' },
+])
 
 onMounted(loadTemplate)
 </script>

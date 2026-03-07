@@ -1,200 +1,204 @@
 <template>
   <div class="print-root">
-    <div v-if="loading" class="no-print flex items-center justify-center min-h-screen">
-      <p class="text-gray-500 text-lg">Carregando relatório...</p>
+    <div v-if="loading" class="no-print flex items-center justify-center min-h-screen bg-gray-50">
+      <p class="text-gray-400 text-base">Carregando relatório...</p>
     </div>
 
-    <div v-else-if="error" class="no-print flex items-center justify-center min-h-screen">
-      <p class="text-red-500 text-lg">{{ error }}</p>
+    <div v-else-if="error" class="no-print flex items-center justify-center min-h-screen bg-gray-50">
+      <p class="text-red-500 text-base">{{ error }}</p>
     </div>
 
     <template v-else>
       <div class="no-print action-bar">
         <div class="action-bar-inner">
-          <button @click="goBack" class="btn-secondary">
-            ← Voltar
-          </button>
-          <span class="report-title-preview">{{ report?.title }}</span>
+          <button @click="goBack" class="btn-ghost">← Voltar</button>
+          <span class="action-bar-title">{{ report?.title }}</span>
           <button @click="triggerPrint" class="btn-primary">
-            🖨️ Imprimir / Salvar PDF
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>
+            </svg>
+            Imprimir / Salvar PDF
           </button>
         </div>
       </div>
 
       <div class="print-content">
-        <div class="print-page report-page">
-          <div class="report-header">
-            <div class="report-header-company">{{ companyName }}</div>
-            <div class="report-header-title">RELATÓRIO DE DESPESAS</div>
-            <div class="report-header-sub">{{ report?.title }}</div>
-          </div>
-
-          <div class="report-meta-grid">
-            <div class="report-meta-item">
-              <span class="report-meta-label">Colaborador</span>
-              <span class="report-meta-value">{{ employeeName }}</span>
+        <!-- PAGE 1: Report -->
+        <div class="print-page">
+          <!-- Header -->
+          <div class="page-header">
+            <div class="header-left">
+              <div class="company-name">{{ companyName }}</div>
+              <div class="doc-title">Relatório de Despesas</div>
             </div>
-            <div class="report-meta-item">
-              <span class="report-meta-label">Status</span>
-              <span class="report-meta-value">{{ statusLabel(report?.status) }}</span>
-            </div>
-            <div v-if="report?.period_start || report?.period_end" class="report-meta-item">
-              <span class="report-meta-label">Período</span>
-              <span class="report-meta-value">
-                <template v-if="report?.period_start">{{ formatDate(report.period_start) }}</template>
-                <template v-if="report?.period_start && report?.period_end"> — </template>
-                <template v-if="report?.period_end">{{ formatDate(report.period_end) }}</template>
-              </span>
-            </div>
-            <div v-if="report?.cost_center" class="report-meta-item">
-              <span class="report-meta-label">Centro de Custo</span>
-              <span class="report-meta-value">{{ report.cost_center }}</span>
-            </div>
-            <div v-if="report?.project" class="report-meta-item">
-              <span class="report-meta-label">Projeto</span>
-              <span class="report-meta-value">{{ report.project }}</span>
-            </div>
-            <div v-if="report?.advance_amount" class="report-meta-item">
-              <span class="report-meta-label">Adiantamento</span>
-              <span class="report-meta-value">{{ formatCurrency(report.advance_amount) }}</span>
+            <div class="header-right">
+              <div class="status-badge" :data-status="report?.status">{{ statusLabel(report?.status) }}</div>
+              <div class="header-total">{{ formatCurrency(report?.total_amount || 0) }}</div>
             </div>
           </div>
 
-          <div v-if="template.introText" class="intro-text">
+          <!-- Report info -->
+          <div class="info-block">
+            <div class="info-title">{{ report?.title }}</div>
+            <div class="info-grid">
+              <div class="info-item">
+                <span class="info-label">Colaborador</span>
+                <span class="info-value">{{ employeeName }}</span>
+              </div>
+              <div v-if="report?.period_start || report?.period_end" class="info-item">
+                <span class="info-label">Período</span>
+                <span class="info-value">
+                  <template v-if="report?.period_start">{{ formatDate(report.period_start) }}</template>
+                  <template v-if="report?.period_start && report?.period_end"> — </template>
+                  <template v-if="report?.period_end">{{ formatDate(report.period_end) }}</template>
+                </span>
+              </div>
+              <div v-if="report?.cost_center" class="info-item">
+                <span class="info-label">Centro de Custo</span>
+                <span class="info-value">{{ report.cost_center }}</span>
+              </div>
+              <div v-if="report?.project" class="info-item">
+                <span class="info-label">Projeto</span>
+                <span class="info-value">{{ report.project }}</span>
+              </div>
+              <div v-if="report?.advance_amount" class="info-item">
+                <span class="info-label">Adiantamento</span>
+                <span class="info-value">{{ formatCurrency(report.advance_amount) }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Intro text -->
+          <div v-if="template.introText" class="intro-box">
             {{ template.introText }}
           </div>
 
-          <div class="section-title">Despesas</div>
-          <table class="expenses-table">
+          <!-- Expenses table -->
+          <div class="section-heading">
+            <span>Despesas</span>
+            <span class="section-count">{{ items.length }} {{ items.length === 1 ? 'item' : 'itens' }}</span>
+          </div>
+          <table class="data-table">
             <thead>
               <tr>
                 <th>Data</th>
                 <th>Estabelecimento</th>
                 <th>Categoria</th>
                 <th>Descrição</th>
-                <th class="text-right">Valor</th>
+                <th class="col-amount">Valor</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="item in items" :key="item.id">
-                <td class="nowrap">{{ formatDate(item.date) }}</td>
+                <td class="col-date">{{ formatDate(item.date) }}</td>
                 <td>{{ item.merchant || '—' }}</td>
-                <td class="nowrap">{{ categoryName(item.category) }}</td>
-                <td>{{ item.description || item.notes || '—' }}</td>
-                <td class="text-right nowrap">{{ formatCurrency(item.amount) }}</td>
+                <td class="col-cat">{{ categoryName(item.category) }}</td>
+                <td class="col-desc">{{ item.description || item.notes || '—' }}</td>
+                <td class="col-amount">{{ formatCurrency(item.amount) }}</td>
               </tr>
               <tr v-if="items.length === 0">
-                <td colspan="5" class="text-center text-gray-500">Nenhuma despesa registrada.</td>
+                <td colspan="5" class="empty-row">Nenhuma despesa registrada.</td>
               </tr>
             </tbody>
           </table>
 
-          <div class="section-title" style="margin-top: 24px;">Resumo por Categoria</div>
+          <!-- Category summary -->
+          <div class="section-heading" style="margin-top:20px">
+            <span>Resumo por Categoria</span>
+          </div>
           <table class="summary-table">
             <thead>
               <tr>
                 <th>Categoria</th>
-                <th class="text-right">Qtd</th>
-                <th class="text-right">Total</th>
+                <th class="col-num">Qtd</th>
+                <th class="col-amount">Total</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="row in categorySummary" :key="row.categoryId">
                 <td>{{ row.name }}</td>
-                <td class="text-right">{{ row.count }}</td>
-                <td class="text-right nowrap">{{ formatCurrency(row.total) }}</td>
+                <td class="col-num">{{ row.count }}</td>
+                <td class="col-amount">{{ formatCurrency(row.total) }}</td>
               </tr>
             </tbody>
             <tfoot>
-              <tr class="total-row">
-                <td colspan="2">Total Geral</td>
-                <td class="text-right nowrap">{{ formatCurrency(report?.total_amount || 0) }}</td>
+              <tr class="foot-total">
+                <td colspan="2">Total geral</td>
+                <td class="col-amount">{{ formatCurrency(report?.total_amount || 0) }}</td>
               </tr>
-              <tr v-if="report?.advance_amount" class="total-row">
-                <td colspan="2">Adiantamento</td>
-                <td class="text-right nowrap">{{ formatCurrency(report.advance_amount) }}</td>
+              <tr v-if="report?.advance_amount" class="foot-sub">
+                <td colspan="2">Adiantamento concedido</td>
+                <td class="col-amount">{{ formatCurrency(report.advance_amount) }}</td>
               </tr>
-              <tr v-if="report?.advance_amount" class="balance-row">
+              <tr v-if="report?.advance_amount" class="foot-balance">
                 <td colspan="2">{{ balanceLabel }}</td>
-                <td class="text-right nowrap">{{ formatCurrency(Math.abs(balanceValue)) }}</td>
+                <td class="col-amount">{{ formatCurrency(Math.abs(balanceValue)) }}</td>
               </tr>
             </tfoot>
           </table>
 
-          <div v-if="template.footerText" class="footer-text">
+          <!-- Footer text -->
+          <div v-if="template.footerText" class="footer-box">
             {{ template.footerText }}
           </div>
 
-          <div class="signatures-area">
-            <div v-if="template.signatureLabel1" class="signature-field">
-              <div class="signature-line" />
-              <div class="signature-label">{{ template.signatureLabel1 }}</div>
-              <div class="signature-date">Data: ___/___/______</div>
+          <!-- Signatures -->
+          <div v-if="template.signatureLabel1 || template.signatureLabel2 || template.signatureLabel3" class="signatures">
+            <div v-if="template.signatureLabel1" class="sig-field">
+              <div class="sig-line" />
+              <div class="sig-label">{{ template.signatureLabel1 }}</div>
+              <div class="sig-date">Data: ___/___/______</div>
             </div>
-            <div v-if="template.signatureLabel2" class="signature-field">
-              <div class="signature-line" />
-              <div class="signature-label">{{ template.signatureLabel2 }}</div>
-              <div class="signature-date">Data: ___/___/______</div>
+            <div v-if="template.signatureLabel2" class="sig-field">
+              <div class="sig-line" />
+              <div class="sig-label">{{ template.signatureLabel2 }}</div>
+              <div class="sig-date">Data: ___/___/______</div>
             </div>
-            <div v-if="template.signatureLabel3" class="signature-field">
-              <div class="signature-line" />
-              <div class="signature-label">{{ template.signatureLabel3 }}</div>
-              <div class="signature-date">Data: ___/___/______</div>
+            <div v-if="template.signatureLabel3" class="sig-field">
+              <div class="sig-line" />
+              <div class="sig-label">{{ template.signatureLabel3 }}</div>
+              <div class="sig-date">Data: ___/___/______</div>
             </div>
           </div>
 
-          <div class="print-footer">
-            Documento gerado em {{ printDate }}
+          <div class="page-footer">
+            Gerado em {{ printDate }} · Reembolsa AI
           </div>
         </div>
 
+        <!-- Receipts pages -->
         <template v-if="template.includeReceipts && itemsWithReceipts.length > 0">
           <div
             v-for="(group, groupIndex) in receiptGroups"
             :key="groupIndex"
             class="print-page receipts-page"
           >
-            <div class="receipts-page-header">
-              <span class="receipts-page-company">{{ companyName }}</span>
-              <span class="receipts-page-report">{{ report?.title }} — Comprovantes ({{ groupIndex + 1 }}/{{ receiptGroups.length }})</span>
+            <div class="receipts-header">
+              <span class="receipts-company">{{ companyName }}</span>
+              <span class="receipts-label">{{ report?.title }} — Comprovantes ({{ groupIndex + 1 }}/{{ receiptGroups.length }})</span>
             </div>
 
             <div class="receipts-grid">
-              <div v-for="item in group" :key="item.id" class="receipt-cell">
-                <div class="receipt-image-wrapper">
+              <div v-for="item in group" :key="item.id" class="receipt-card">
+                <div class="receipt-img-wrap">
                   <img
                     v-if="item._imageUrl"
                     :src="item._imageUrl"
-                    :alt="`Comprovante - ${item.merchant || item.description}`"
-                    class="receipt-image"
+                    :alt="`Comprovante ${item.merchant || ''}`"
+                    class="receipt-img"
                   />
-                  <div v-else class="receipt-no-image">Sem imagem</div>
+                  <div v-else class="receipt-no-img">Sem imagem</div>
                 </div>
-                <div class="receipt-info">
-                  <div class="receipt-info-row">
-                    <span class="receipt-info-label">Data:</span>
-                    <span>{{ formatDate(item.date) }}</span>
-                  </div>
-                  <div class="receipt-info-row">
-                    <span class="receipt-info-label">Estabelecimento:</span>
-                    <span>{{ item.merchant || '—' }}</span>
-                  </div>
-                  <div class="receipt-info-row">
-                    <span class="receipt-info-label">Categoria:</span>
-                    <span>{{ categoryName(item.category) }}</span>
-                  </div>
-                  <div v-if="item.description" class="receipt-info-row">
-                    <span class="receipt-info-label">Descrição:</span>
-                    <span>{{ item.description }}</span>
-                  </div>
-                  <div class="receipt-info-row receipt-amount">
-                    <span class="receipt-info-label">Valor:</span>
-                    <span>{{ formatCurrency(item.amount) }}</span>
-                  </div>
+                <div class="receipt-meta">
+                  <div class="receipt-meta-row"><span class="meta-key">Data</span><span>{{ formatDate(item.date) }}</span></div>
+                  <div class="receipt-meta-row"><span class="meta-key">Local</span><span>{{ item.merchant || '—' }}</span></div>
+                  <div class="receipt-meta-row"><span class="meta-key">Categoria</span><span>{{ categoryName(item.category) }}</span></div>
+                  <div v-if="item.description" class="receipt-meta-row"><span class="meta-key">Descrição</span><span>{{ item.description }}</span></div>
+                  <div class="receipt-meta-row receipt-value"><span class="meta-key">Valor</span><span>{{ formatCurrency(item.amount) }}</span></div>
                 </div>
               </div>
 
-              <div v-for="n in (4 - group.length)" :key="`empty-${n}`" class="receipt-cell receipt-cell-empty" />
+              <div v-for="n in (4 - group.length)" :key="`pad-${n}`" class="receipt-card receipt-card-empty" />
             </div>
           </div>
         </template>
@@ -214,6 +218,8 @@ const route = useRoute()
 const router = useRouter()
 const companyStore = useCompanyStore()
 
+const isPreview = computed(() => route.query.preview === '1')
+
 const report = ref<RecordModel | null>(null)
 const items = ref<RecordModel[]>([])
 const categories = ref<RecordModel[]>([])
@@ -229,11 +235,11 @@ const template = ref({
   includeReceipts: true,
 })
 
-const companyName = computed(() => companyStore.currentCompany?.name || 'Empresa')
+const companyName = computed(() => companyStore.currentCompany?.name || 'Minha Empresa')
 const employeeName = computed(() => {
+  if (isPreview.value) return 'João da Silva'
   const u = report.value?.expand?.user
-  if (!u) return '—'
-  return u.name || u.email || '—'
+  return u?.name || u?.email || '—'
 })
 
 const printDate = computed(() => new Date().toLocaleString('pt-BR'))
@@ -247,16 +253,12 @@ function formatCurrency(value: number): string {
   return (value / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-function statusLabel(status: string): string {
+function statusLabel(status?: string): string {
   const map: Record<string, string> = {
-    draft: 'Rascunho',
-    submitted: 'Enviado para Aprovação',
-    approved: 'Aprovado',
-    rejected: 'Rejeitado',
-    paid: 'Pago',
-    partially_paid: 'Pago Parcialmente',
+    draft: 'Rascunho', submitted: 'Enviado', approved: 'Aprovado',
+    rejected: 'Rejeitado', paid: 'Pago', partially_paid: 'Pago Parcialmente',
   }
-  return map[status] || status || '—'
+  return map[status || ''] || status || '—'
 }
 
 function categoryName(categoryId: string): string {
@@ -268,38 +270,23 @@ function categoryName(categoryId: string): string {
 const categorySummary = computed(() => {
   const map: Record<string, { categoryId: string; name: string; count: number; total: number }> = {}
   for (const item of items.value) {
-    const cat = categories.value.find(c => c.id === item.category)
-    const name = cat ? (cat.icon ? `${cat.icon} ${cat.name}` : cat.name) : 'Sem Categoria'
+    const name = categoryName(item.category)
     const key = item.category || '__none__'
-    if (!map[key]) {
-      map[key] = { categoryId: key, name, count: 0, total: 0 }
-    }
+    if (!map[key]) map[key] = { categoryId: key, name, count: 0, total: 0 }
     map[key].count++
     map[key].total += Number(item.amount) || 0
   }
   return Object.values(map).sort((a, b) => b.total - a.total)
 })
 
-const balanceValue = computed(() => {
-  const total = report.value?.total_amount || 0
-  const advance = report.value?.advance_amount || 0
-  return total - advance
-})
+const balanceValue = computed(() => (report.value?.total_amount || 0) - (report.value?.advance_amount || 0))
+const balanceLabel = computed(() => balanceValue.value >= 0 ? 'Saldo a Reembolsar' : 'Saldo a Devolver')
 
-const balanceLabel = computed(() => {
-  return balanceValue.value >= 0 ? 'Saldo a Reembolsar' : 'Saldo a Devolver'
-})
-
-const itemsWithReceipts = computed(() =>
-  items.value.filter(i => i.receipt_image)
-)
-
+const itemsWithReceipts = computed(() => items.value.filter(i => i.receipt_image || i._imageUrl))
 const receiptGroups = computed(() => {
   const groups: RecordModel[][] = []
   const list = itemsWithReceipts.value
-  for (let i = 0; i < list.length; i += 4) {
-    groups.push(list.slice(i, i + 4))
-  }
+  for (let i = 0; i < list.length; i += 4) groups.push(list.slice(i, i + 4))
   return groups
 })
 
@@ -307,32 +294,58 @@ function loadTemplate() {
   const key = `print_template_${companyStore.currentCompany?.id || 'default'}`
   try {
     const raw = localStorage.getItem(key)
-    if (raw) {
-      const parsed = JSON.parse(raw)
-      template.value = { ...template.value, ...parsed }
-    }
-  } catch {
-    // use defaults
-  }
+    if (raw) template.value = { ...template.value, ...JSON.parse(raw) }
+  } catch { /* use defaults */ }
 }
 
-function triggerPrint() {
-  window.print()
-}
+function triggerPrint() { window.print() }
+function goBack() { router.back() }
 
-function goBack() {
-  router.back()
+function loadMockData() {
+  report.value = {
+    id: 'preview',
+    title: 'Viagem Comercial — São Paulo',
+    status: 'approved',
+    period_start: '2025-04-01T00:00:00.000Z',
+    period_end: '2025-04-05T00:00:00.000Z',
+    cost_center: 'Comercial',
+    project: 'Expansão SP',
+    total_amount: 87230,
+    advance_amount: 30000,
+    company: '',
+  } as any
+
+  categories.value = [
+    { id: 'cat1', name: 'Alimentação', icon: '🍽️' },
+    { id: 'cat2', name: 'Transporte', icon: '🚗' },
+    { id: 'cat3', name: 'Hospedagem', icon: '🏨' },
+    { id: 'cat4', name: 'Material', icon: '📦' },
+  ] as any[]
+
+  const sampleImg = '/receipt-sample.png'
+  items.value = [
+    { id: '1', date: '2025-04-01T00:00:00Z', merchant: 'Restaurante Sabor & Cia', category: 'cat1', description: 'Almoço com cliente', amount: 15620, receipt_image: 'mock', _imageUrl: sampleImg },
+    { id: '2', date: '2025-04-01T00:00:00Z', merchant: '99 Táxi', category: 'cat2', description: 'Traslado aeroporto — hotel', amount: 8700, receipt_image: 'mock', _imageUrl: sampleImg },
+    { id: '3', date: '2025-04-02T00:00:00Z', merchant: 'Hotel Paulista Inn', category: 'cat3', description: 'Hospedagem 2 noites', amount: 39000, receipt_image: 'mock', _imageUrl: sampleImg },
+    { id: '4', date: '2025-04-02T00:00:00Z', merchant: 'Papelaria Central', category: 'cat4', description: 'Material para reunião', amount: 3210, receipt_image: 'mock', _imageUrl: sampleImg },
+    { id: '5', date: '2025-04-03T00:00:00Z', merchant: 'Restaurante Sabor & Cia', category: 'cat1', description: 'Jantar com equipe', amount: 21400, receipt_image: 'mock', _imageUrl: sampleImg },
+    { id: '6', date: '2025-04-04T00:00:00Z', merchant: 'Uber', category: 'cat2', description: 'Deslocamento interno', amount: -700 + 700, receipt_image: '', _imageUrl: '' },
+  ] as any[]
 }
 
 onMounted(async () => {
-  const reportId = route.params.id as string
-
   if (!companyStore.currentCompany) {
     await companyStore.fetchMyCompanies()
   }
-
   loadTemplate()
 
+  if (isPreview.value) {
+    loadMockData()
+    loading.value = false
+    return
+  }
+
+  const reportId = route.params.id as string
   try {
     const [reportData, itemsData] = await Promise.all([
       pb.collection('expense_reports').getOne(reportId, { expand: 'user' }),
@@ -342,23 +355,16 @@ onMounted(async () => {
         expand: 'category',
       }),
     ])
-
     report.value = reportData
-
-    const companyId = reportData.company
     const cats = await pb.collection('categories').getFullList({
-      filter: `company="${companyId}"`,
+      filter: `company="${reportData.company}"`,
       sort: 'name',
     })
     categories.value = cats
-
-    const enriched = itemsData.map(item => ({
+    items.value = itemsData.map(item => ({
       ...item,
-      _imageUrl: item.receipt_image
-        ? pb.files.getURL(item, item.receipt_image)
-        : '',
+      _imageUrl: item.receipt_image ? pb.files.getURL(item, item.receipt_image) : '',
     }))
-    items.value = enriched
   } catch (e: any) {
     error.value = e?.message || 'Erro ao carregar relatório.'
   } finally {
@@ -369,19 +375,20 @@ onMounted(async () => {
 
 <style scoped>
 .print-root {
-  font-family: 'Georgia', serif;
-  background: #f3f4f6;
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: #f0f2f5;
   min-height: 100vh;
+  color: #111827;
 }
 
+/* Action bar */
 .action-bar {
   position: sticky;
   top: 0;
   z-index: 100;
   background: white;
   border-bottom: 1px solid #e5e7eb;
-  padding: 12px 24px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  padding: 10px 20px;
 }
 
 .action-bar-inner {
@@ -390,11 +397,11 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
 }
 
-.report-title-preview {
-  font-size: 14px;
+.action-bar-title {
+  font-size: 13px;
   font-weight: 600;
   color: #374151;
   flex: 1;
@@ -405,327 +412,320 @@ onMounted(async () => {
 }
 
 .btn-primary {
-  background: linear-gradient(to right, #2563eb, #7c3aed);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
   color: white;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  padding: 8px 20px;
+  padding: 8px 18px;
   border-radius: 8px;
   border: none;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(37,99,235,0.3);
   white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(37,99,235,0.25);
 }
 
-.btn-primary:hover {
-  opacity: 0.92;
-}
+.btn-primary:hover { opacity: 0.9; }
+.btn-primary .icon { width: 15px; height: 15px; }
 
-.btn-secondary {
-  background: white;
-  color: #374151;
-  font-size: 14px;
-  font-weight: 600;
-  padding: 8px 16px;
+.btn-ghost {
+  background: transparent;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 12px;
   border-radius: 8px;
-  border: 1px solid #d1d5db;
+  border: 1px solid #e5e7eb;
   cursor: pointer;
   white-space: nowrap;
 }
+.btn-ghost:hover { background: #f9fafb; color: #374151; }
 
-.btn-secondary:hover {
-  background: #f9fafb;
-}
-
+/* Print content wrapper */
 .print-content {
-  padding: 32px 24px;
-  max-width: 960px;
+  padding: 28px 16px;
+  max-width: 900px;
   margin: 0 auto;
 }
 
+/* A4 page simulation */
 .print-page {
   background: white;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.10);
-  margin-bottom: 32px;
-  padding: 48px 56px;
-  min-height: 297mm;
+  box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+  border-radius: 4px;
+  margin-bottom: 28px;
+  padding: 44px 52px;
   width: 210mm;
+  min-height: 270mm;
   margin-left: auto;
   margin-right: auto;
   box-sizing: border-box;
 }
 
-.report-header {
-  text-align: center;
-  border-bottom: 2px solid #1e3a5f;
-  padding-bottom: 16px;
-  margin-bottom: 20px;
-}
-
-.report-header-company {
-  font-size: 13px;
-  font-weight: bold;
-  color: #1e3a5f;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 4px;
-}
-
-.report-header-title {
-  font-size: 20px;
-  font-weight: bold;
-  color: #111827;
-  letter-spacing: 0.04em;
-}
-
-.report-header-sub {
-  font-size: 14px;
-  color: #4b5563;
-  margin-top: 4px;
-}
-
-.report-meta-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px 24px;
-  margin-bottom: 20px;
-  padding: 12px 16px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  background: #f9fafb;
-}
-
-.report-meta-item {
+/* Page header */
+.page-header {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-bottom: 16px;
+  margin-bottom: 18px;
+  border-bottom: 2px solid #2563eb;
 }
 
-.report-meta-label {
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+.header-left { display: flex; flex-direction: column; gap: 2px; }
+
+.company-name {
+  font-size: 11px;
+  font-weight: 700;
   color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
 }
 
-.report-meta-value {
-  font-size: 13px;
+.doc-title {
+  font-size: 22px;
+  font-weight: 800;
   color: #111827;
-  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
 }
 
-.intro-text {
-  font-size: 12px;
-  color: #374151;
-  font-style: italic;
-  border-left: 3px solid #2563eb;
-  padding: 8px 12px;
-  margin-bottom: 20px;
-  background: #eff6ff;
-  border-radius: 0 4px 4px 0;
-  line-height: 1.6;
-}
+.header-right { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 
-.section-title {
-  font-size: 12px;
+.status-badge {
+  font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #1e3a5f;
-  border-bottom: 1px solid #1e3a5f;
-  padding-bottom: 4px;
-  margin-bottom: 8px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+.status-badge[data-status="approved"] { background: #d1fae5; color: #065f46; }
+.status-badge[data-status="paid"] { background: #ede9fe; color: #5b21b6; }
+.status-badge[data-status="rejected"] { background: #fee2e2; color: #991b1b; }
+.status-badge[data-status="draft"] { background: #f3f4f6; color: #374151; }
+
+.header-total {
+  font-size: 24px;
+  font-weight: 800;
+  color: #2563eb;
+  letter-spacing: -0.02em;
 }
 
-.expenses-table,
-.summary-table {
+/* Info block */
+.info-block {
+  background: #f8faff;
+  border: 1px solid #e0eaff;
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin-bottom: 18px;
+}
+
+.info-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 10px;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.info-item { display: flex; flex-direction: column; gap: 1px; }
+.info-label { font-size: 10px; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.06em; }
+.info-value { font-size: 12px; font-weight: 600; color: #374151; }
+
+/* Intro box */
+.intro-box {
+  font-size: 11.5px;
+  color: #374151;
+  line-height: 1.65;
+  background: #eff6ff;
+  border-left: 3px solid #2563eb;
+  padding: 10px 14px;
+  border-radius: 0 6px 6px 0;
+  margin-bottom: 18px;
+}
+
+/* Section heading */
+.section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #2563eb;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #dbeafe;
+  margin-bottom: 6px;
+}
+
+.section-count {
+  font-size: 10px;
+  font-weight: 600;
+  color: #93c5fd;
+}
+
+/* Data tables */
+.data-table, .summary-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: 11.5px;
 }
 
-.expenses-table th,
-.summary-table th {
-  background: #1e3a5f;
-  color: white;
-  font-weight: 600;
-  padding: 6px 10px;
+.data-table th, .summary-table th {
   text-align: left;
-  font-size: 11px;
+  font-size: 10px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.07em;
+  color: #6b7280;
+  padding: 5px 8px;
+  border-bottom: 1px solid #e5e7eb;
 }
 
-.expenses-table td,
-.summary-table td {
-  padding: 6px 10px;
-  border-bottom: 1px solid #e5e7eb;
+.data-table td, .summary-table td {
+  padding: 6px 8px;
   color: #374151;
+  border-bottom: 1px solid #f3f4f6;
   vertical-align: top;
 }
 
-.expenses-table tr:nth-child(even) td,
-.summary-table tbody tr:nth-child(even) td {
-  background: #f9fafb;
+.data-table tr:last-child td, .summary-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
-.summary-table tfoot .total-row td {
+.col-amount { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.col-num { text-align: center; }
+.col-date { white-space: nowrap; color: #6b7280; }
+.col-cat { white-space: nowrap; }
+.col-desc { color: #6b7280; font-size: 11px; }
+.empty-row { text-align: center; color: #9ca3af; font-style: italic; padding: 16px; }
+
+.summary-table .foot-total td {
   font-weight: 700;
   font-size: 12px;
-  border-top: 2px solid #1e3a5f;
+  color: #111827;
+  border-top: 2px solid #e5e7eb;
   border-bottom: none;
   padding-top: 8px;
-  color: #111827;
 }
 
-.summary-table tfoot .balance-row td {
-  font-weight: 700;
-  font-size: 12px;
-  color: #1e3a5f;
+.summary-table .foot-sub td {
+  font-size: 11px;
+  color: #6b7280;
   border-bottom: none;
 }
 
-.text-right {
-  text-align: right;
-}
-
-.nowrap {
-  white-space: nowrap;
-}
-
-.footer-text {
+.summary-table .foot-balance td {
+  font-weight: 800;
   font-size: 12px;
+  color: #2563eb;
+  border-bottom: none;
+}
+
+/* Footer box */
+.footer-box {
+  font-size: 11.5px;
   color: #374151;
-  margin-top: 24px;
-  padding: 12px 16px;
-  border: 1px dashed #d1d5db;
-  border-radius: 4px;
-  background: #fafafa;
   line-height: 1.6;
+  border: 1px dashed #d1d5db;
+  padding: 10px 14px;
+  border-radius: 6px;
+  background: #fafafa;
+  margin-top: 20px;
 }
 
-.signatures-area {
+/* Signatures */
+.signatures {
   display: flex;
-  gap: 24px;
-  margin-top: 40px;
-  padding-top: 16px;
+  gap: 20px;
+  margin-top: 36px;
+  padding-top: 0;
 }
 
-.signature-field {
-  flex: 1;
-  text-align: center;
-}
+.sig-field { flex: 1; text-align: center; }
+.sig-line { border-bottom: 1px solid #374151; height: 40px; margin-bottom: 6px; }
+.sig-label { font-size: 10px; font-weight: 700; color: #374151; text-transform: uppercase; letter-spacing: 0.08em; }
+.sig-date { font-size: 10px; color: #9ca3af; margin-top: 3px; }
 
-.signature-line {
-  border-bottom: 1px solid #374151;
-  margin-bottom: 6px;
-  height: 40px;
-}
-
-.signature-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: #374151;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.signature-date {
-  font-size: 10px;
-  color: #6b7280;
-  margin-top: 4px;
-}
-
-.print-footer {
+/* Page footer */
+.page-footer {
   margin-top: 32px;
-  font-size: 10px;
-  color: #9ca3af;
   text-align: center;
-  border-top: 1px solid #e5e7eb;
+  font-size: 10px;
+  color: #d1d5db;
+  border-top: 1px solid #f3f4f6;
   padding-top: 8px;
 }
 
 /* Receipts page */
-.receipts-page {
-  padding: 32px 40px;
-}
+.receipts-page { padding: 32px 40px; min-height: unset; }
 
-.receipts-page-header {
+.receipts-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 2px solid #1e3a5f;
   padding-bottom: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
+  border-bottom: 2px solid #2563eb;
 }
 
-.receipts-page-company {
-  font-size: 11px;
-  font-weight: 700;
-  color: #1e3a5f;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.receipts-page-report {
-  font-size: 11px;
-  color: #4b5563;
-}
+.receipts-company { font-size: 11px; font-weight: 700; color: #2563eb; text-transform: uppercase; letter-spacing: 0.08em; }
+.receipts-label { font-size: 11px; color: #6b7280; }
 
 .receipts-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
-  gap: 16px;
-  height: calc(100% - 60px);
+  gap: 14px;
 }
 
-.receipt-cell {
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
+.receipt-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  background: white;
 }
 
-.receipt-cell-empty {
+.receipt-card-empty {
   background: #f9fafb;
   border-style: dashed;
+  min-height: 200px;
 }
 
-.receipt-image-wrapper {
+.receipt-img-wrap {
   flex: 1;
-  overflow: hidden;
   background: #f3f4f6;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 140px;
-  max-height: 200px;
+  overflow: hidden;
+  min-height: 160px;
+  max-height: 210px;
 }
 
-.receipt-image {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
-}
+.receipt-img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.receipt-no-img { color: #9ca3af; font-size: 11px; font-style: italic; }
 
-.receipt-no-image {
-  color: #9ca3af;
-  font-size: 12px;
-  font-style: italic;
-}
-
-.receipt-info {
+.receipt-meta {
   padding: 8px 10px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid #f3f4f6;
   background: white;
   flex-shrink: 0;
 }
 
-.receipt-info-row {
+.receipt-meta-row {
   display: flex;
   gap: 4px;
   font-size: 10px;
@@ -734,42 +734,22 @@ onMounted(async () => {
   flex-wrap: wrap;
 }
 
-.receipt-info-label {
-  font-weight: 700;
-  color: #1e3a5f;
-  white-space: nowrap;
-}
+.meta-key { font-weight: 700; color: #2563eb; white-space: nowrap; min-width: 56px; }
+.receipt-value { font-weight: 700; font-size: 11px; color: #111827; margin-top: 3px; }
 
-.receipt-amount {
-  font-weight: 700;
-  font-size: 11px;
-  margin-top: 4px;
-  color: #111827;
-}
-
-/* Print media */
+/* Print styles */
 @media print {
-  @page {
-    size: A4;
-    margin: 10mm 12mm;
-  }
+  @page { size: A4; margin: 10mm 12mm; }
 
-  .no-print {
-    display: none !important;
-  }
+  .no-print { display: none !important; }
 
-  .print-root {
-    background: white;
-    min-height: unset;
-  }
+  .print-root { background: white; }
 
-  .print-content {
-    padding: 0;
-    max-width: none;
-  }
+  .print-content { padding: 0; max-width: none; }
 
   .print-page {
     box-shadow: none;
+    border-radius: 0;
     margin: 0;
     padding: 0;
     width: 100%;
@@ -777,20 +757,15 @@ onMounted(async () => {
     page-break-after: always;
   }
 
-  .print-page:last-child {
-    page-break-after: auto;
-  }
+  .print-page:last-child { page-break-after: auto; }
 
   .receipts-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    grid-template-rows: 1fr 1fr;
     gap: 10px;
     height: 240mm;
   }
 
-  .receipt-image-wrapper {
-    max-height: 160px;
-  }
+  .receipt-img-wrap { max-height: 160px; }
 }
 </style>
