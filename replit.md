@@ -80,3 +80,9 @@ PocketBase collections created via migrations:
 - Created superuser admin account
 - Fixed IPv4/IPv6 proxy issue (web app host: 127.0.0.1)
 - Configured for Replit environment (ports, hosts, proxy settings)
+- Added print/PDF report system: PrintTemplateView (admin-only template config), PrintReportView (standalone print layout with receipts 4-per-page), print button in ExpenseReportDetailView, "Modelo de Impressão" nav item for admins
+
+## Print/PDF System
+- **PrintTemplateView** (`/print-template`, admin only): Configure intro text, footer text, signature labels, receipt inclusion toggle. Settings stored in localStorage per company.
+- **PrintReportView** (`/reports/:id/print`): Standalone A4 print layout. Page 1: company header + report metadata + items table + category summary + signatures. Subsequent pages: receipt images 4 per page (2x2 grid). Uses `window.print()` for PDF export.
+- Print button added to ExpenseReportDetailView, opens in new tab.
