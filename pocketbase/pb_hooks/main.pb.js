@@ -597,7 +597,7 @@ routerAdd("POST", "/api/currency/convert", (e) => {
 
   let note = ""
   if (from !== to) {
-    note = "Compra em " + from + " " + amount.toLocaleString("pt-BR") + " (taxa: 1 " + from + " = " + roundedRate.toFixed(4) + " " + to + ")"
+    note = "Compra em " + from + " " + amount + " (taxa: 1 " + from + " = " + roundedRate.toFixed(4) + " " + to + ")"
   }
 
   return e.json(200, {
