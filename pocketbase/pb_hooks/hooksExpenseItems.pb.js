@@ -5,7 +5,7 @@ const SUPPORTED_CURRENCIES = ["BRL", "CLP", "USD", "EUR"]
 function validateCurrencyFields(e) {
   const currency = e.record.getString("original_currency") || "BRL"
 
-  if (currency && !SUPPORTED_CURRENCIES.includes(currency)) {
+  if (currency && SUPPORTED_CURRENCIES.indexOf(currency) === -1) {
     throw new BadRequestError(
       "Moeda não suportada: " + currency + ". Moedas válidas: " + SUPPORTED_CURRENCIES.join(", ")
     )
@@ -48,8 +48,8 @@ function validateCurrencyFields(e) {
   return e.next()
 }
 
-onRecordCreateRequest(validateCurrencyFields, "expense_items")
-onRecordUpdateRequest(validateCurrencyFields, "expense_items")
+onRecordCreate(validateCurrencyFields, "expense_items")
+onRecordUpdate(validateCurrencyFields, "expense_items")
 
 function recalcKmAmount(e) {
   const km = e.record.getFloat("km")
@@ -83,5 +83,5 @@ function recalcKmAmount(e) {
   return e.next()
 }
 
-onRecordCreateRequest(recalcKmAmount, "expense_items")
-onRecordUpdateRequest(recalcKmAmount, "expense_items")
+onRecordCreate(recalcKmAmount, "expense_items")
+onRecordUpdate(recalcKmAmount, "expense_items")
