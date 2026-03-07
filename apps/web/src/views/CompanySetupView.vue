@@ -342,7 +342,7 @@ async function handleSubmit() {
   }
 
   if (result.success) {
-    const companyId = (result as { success: true; companyId?: string }).companyId
+    const companyId = (result as any).companyId
     if (!isEditing.value && companyId) {
       router.push({ name: 'companies-edit', params: { id: companyId } })
     } else {
