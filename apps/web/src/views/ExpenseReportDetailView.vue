@@ -678,7 +678,7 @@
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       @click.self="closeEditItemModal()"
     >
-      <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full mx-4">
+      <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
         <h3 class="text-lg font-bold text-gray-900 mb-4">Editar Despesa</h3>
         <form @submit.prevent="handleUpdateItem" class="space-y-4">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
