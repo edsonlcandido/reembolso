@@ -751,6 +751,42 @@
             <label class="block text-sm font-medium text-gray-700 mb-1">Observações</label>
             <textarea v-model="editItemForm.notes" rows="2" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" placeholder="Observações adicionais" />
           </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Comprovante</label>
+            <div class="rounded-xl border border-blue-100 bg-white p-3">
+              <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <button
+                  type="button"
+                  @click="openEditFilePicker"
+                  class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 transition-all sm:w-auto"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 16V8m0 8l-3-3m3 3l3-3M4 16.5V18a2 2 0 002 2h12a2 2 0 002-2v-1.5M8 7V6a4 4 0 118 0v1" />
+                  </svg>
+                  Escolher arquivo
+                </button>
+                <button
+                  type="button"
+                  @click.prevent.stop="openEditCameraCapture"
+                  class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 transition-all sm:w-auto"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h2l1.5-2h7L17 7h2a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <circle cx="12" cy="13" r="3" />
+                  </svg>
+                  Tirar foto
+                </button>
+              </div>
+            </div>
+            <input ref="editFileInputRef" type="file" accept="image/*" @change="handleEditFileChange" class="hidden" />
+            <input ref="editCameraInputRef" type="file" accept="image/*" capture="environment" @change="handleEditCameraChange" class="hidden" />
+            <p v-if="editReceiptFile" class="mt-2 text-sm text-emerald-700">
+              Novo comprovante selecionado: <span class="font-medium">{{ editReceiptFile.name }}</span>
+            </p>
+            <p v-else-if="editingItem?.receipt_image" class="mt-2 text-sm text-gray-500">
+              Comprovante atual: <span class="font-medium">{{ editingItem.receipt_image }}</span>
+            </p>
+          </div>
           <div class="flex gap-3 justify-end">
             <button
               type="button"
@@ -804,6 +840,9 @@ const returnReason = ref('')
 const receiptFile = ref<File | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const cameraInputRef = ref<HTMLInputElement | null>(null)
+const editReceiptFile = ref<File | null>(null)
+const editFileInputRef = ref<HTMLInputElement | null>(null)
+const editCameraInputRef = ref<HTMLInputElement | null>(null)
 const analyzingReceipt = ref(false)
 const submitting = ref(false)
 const notifying = ref(false)
@@ -1171,6 +1210,24 @@ function openCameraCapture(e?: Event) {
   cameraInputRef.value?.click()
 }
 
+function handleEditFileChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  if (input.files && input.files[0]) editReceiptFile.value = input.files[0]
+}
+
+function handleEditCameraChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  if (input.files && input.files[0]) editReceiptFile.value = input.files[0]
+}
+
+function openEditFilePicker() { editFileInputRef.value?.click() }
+
+function openEditCameraCapture(e?: Event) {
+  e?.preventDefault()
+  e?.stopPropagation()
+  editCameraInputRef.value?.click()
+}
+
 async function analyzeWithAI() {
   if (!receiptFile.value) return
 
@@ -1350,6 +1407,9 @@ function openEditItemModal(item: RecordModel) {
 function closeEditItemModal() {
   showEditItemModal.value = false
   editingItem.value = null
+  editReceiptFile.value = null
+  if (editFileInputRef.value) editFileInputRef.value.value = ''
+  if (editCameraInputRef.value) editCameraInputRef.value.value = ''
 }
 
 async function handleUpdateItem() {
@@ -1389,7 +1449,15 @@ async function handleUpdateItem() {
       updateData.currency_note = ''
     }
 
-    const result = await expensesStore.updateItem(editingItem.value.id, updateData)
+    let result
+    if (editReceiptFile.value) {
+      const formData = new FormData()
+      Object.entries(updateData).forEach(([k, v]) => { if (v !== undefined) formData.append(k, String(v)) })
+      formData.append('receipt_image', editReceiptFile.value)
+      result = await expensesStore.updateItem(editingItem.value.id, formData)
+    } else {
+      result = await expensesStore.updateItem(editingItem.value.id, updateData)
+    }
     if (result.success) {
       successMsg.value = 'Despesa atualizada com sucesso!'
       closeEditItemModal()
