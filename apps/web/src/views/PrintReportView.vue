@@ -64,7 +64,10 @@
               </div>
               <div v-if="report?.advance_amount" class="info-item">
                 <span class="info-label">Adiantamento</span>
-                <span class="info-value">{{ formatCurrency(report.advance_amount) }}</span>
+                <span class="info-value">
+                  {{ formatCurrency(report.advance_amount) }}
+                  <span v-if="report.advance_date" class="info-subvalue">em {{ formatDate(report.advance_date) }}</span>
+                </span>
               </div>
             </div>
           </div>
@@ -142,7 +145,10 @@
                 <td class="col-amount">{{ formatCurrency(report?.total_amount || 0) }}</td>
               </tr>
               <tr v-if="report?.advance_amount" class="foot-sub">
-                <td colspan="2">Adiantamento concedido</td>
+                <td colspan="2">
+                  Adiantamento concedido
+                  <span v-if="report.advance_date" class="foot-sub-date">em {{ formatDate(report.advance_date) }}</span>
+                </td>
                 <td class="col-amount">{{ formatCurrency(report.advance_amount) }}</td>
               </tr>
               <tr v-if="report?.advance_amount" class="foot-balance">
@@ -396,6 +402,7 @@ function loadMockData() {
     project: 'Expansão SP',
     total_amount: 180712,
     advance_amount: 30000,
+    advance_date: '2025-03-28',
     company: '',
   } as any
 
@@ -653,6 +660,7 @@ onMounted(async () => {
 .info-item { display: flex; flex-direction: column; gap: 1px; }
 .info-label { font-size: 10px; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.06em; }
 .info-value { font-size: 12px; font-weight: 600; color: #374151; }
+.info-subvalue { font-size: 10px; font-weight: 400; color: #6b7280; margin-left: 4px; }
 
 /* Intro box */
 .intro-box {
@@ -749,6 +757,7 @@ onMounted(async () => {
   color: #6b7280;
   border-bottom: none;
 }
+.foot-sub-date { font-size: 10px; color: #9ca3af; margin-left: 4px; }
 
 .summary-table .foot-balance td {
   font-weight: 800;
