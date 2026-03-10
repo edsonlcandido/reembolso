@@ -140,9 +140,25 @@
                 :readonly="isKmCategory"
                 class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                 :class="{ 'bg-gray-50 cursor-not-allowed': isKmCategory }"
-                placeholder="0,00" />
+                placeholder="0,00"
+                @input="onAddAmountChange" />
               <p v-if="isKmCategory" class="mt-1 text-xs text-gray-500">Calculado automaticamente: km × taxa/km</p>
               <p v-if="isForeignCurrency && !isKmCategory" class="mt-1 text-xs text-gray-500">Valor sugerido pela conversão. Você pode editar.</p>
+            </div>
+            <div v-if="isForeignCurrency">
+              <label class="block text-sm font-medium text-gray-700 mb-1">
+                Taxa de conversão
+                <span class="text-gray-400 font-normal text-xs">(1 {{ itemForm.currency }} = ? BRL)</span>
+              </label>
+              <input
+                v-model="conversionRateDisplay"
+                type="number"
+                step="0.000001"
+                min="0"
+                class="w-full rounded-lg border border-blue-200 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                placeholder="0.000000"
+                @input="onAddRateChange"
+              />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Estabelecimento</label>
@@ -252,7 +268,11 @@ const iofForm = ref({
 const convertingCurrency = ref(false)
 const currencyNote = ref('')
 const conversionRate = ref(0)
+const conversionRateDisplay = ref('')
 let convertDebounceTimer: ReturnType<typeof setTimeout> | null = null
+let addAmountDebounceTimer: ReturnType<typeof setTimeout> | null = null
+let addRateDebounceTimer: ReturnType<typeof setTimeout> | null = null
+let addRecalcLock = false
 
 const isForeignCurrency = computed(() => itemForm.value.currency !== 'BRL')
 
@@ -314,17 +334,61 @@ async function fetchConversion(amount: number) {
       method: 'POST',
       body: { amount, from: itemForm.value.currency, to: 'BRL' },
     })
+    addRecalcLock = true
     itemForm.value.amountDisplay = String(data.brl_amount)
     conversionRate.value = data.conversion_rate
+    conversionRateDisplay.value = data.conversion_rate ? Number(data.conversion_rate).toFixed(6) : ''
     currencyNote.value = data.note || ''
     const brlAmount = parseFloat(String(data.brl_amount) || '0')
     iofForm.value.amount = (brlAmount * 0.035).toFixed(2)
     iofForm.value.description = `IOF compra ${amount} ${itemForm.value.currency}`
+    addRecalcLock = false
   } catch {
     currencyNote.value = 'Erro ao converter moeda.'
+    addRecalcLock = false
   } finally {
     convertingCurrency.value = false
   }
+}
+
+function buildAddCurrencyNote(orig: number, cur: string, rate: number): string {
+  return `Compra em ${cur} ${orig} (taxa: 1 ${cur} = ${rate.toFixed(6)} BRL)`
+}
+
+function onAddAmountChange() {
+  if (!isForeignCurrency.value || addRecalcLock) return
+  if (addAmountDebounceTimer) clearTimeout(addAmountDebounceTimer)
+  addAmountDebounceTimer = setTimeout(() => {
+    const brl = parseFloat(itemForm.value.amountDisplay || '0')
+    const orig = parseFloat(itemForm.value.originalAmount || '0')
+    if (brl > 0 && orig > 0) {
+      addRecalcLock = true
+      const rate = brl / orig
+      conversionRate.value = rate
+      conversionRateDisplay.value = rate.toFixed(6)
+      currencyNote.value = buildAddCurrencyNote(orig, itemForm.value.currency, rate)
+      iofForm.value.amount = (brl * 0.035).toFixed(2)
+      addRecalcLock = false
+    }
+  }, 400)
+}
+
+function onAddRateChange() {
+  if (!isForeignCurrency.value || addRecalcLock) return
+  if (addRateDebounceTimer) clearTimeout(addRateDebounceTimer)
+  addRateDebounceTimer = setTimeout(() => {
+    const rate = parseFloat(conversionRateDisplay.value || '0')
+    const orig = parseFloat(itemForm.value.originalAmount || '0')
+    if (rate > 0 && orig > 0) {
+      addRecalcLock = true
+      const brl = orig * rate
+      conversionRate.value = rate
+      itemForm.value.amountDisplay = brl.toFixed(2)
+      currencyNote.value = buildAddCurrencyNote(orig, itemForm.value.currency, rate)
+      iofForm.value.amount = (brl * 0.035).toFixed(2)
+      addRecalcLock = false
+    }
+  }, 400)
 }
 
 function resetForm() {
@@ -332,6 +396,7 @@ function resetForm() {
   iofForm.value = { amount: '', description: '' }
   currencyNote.value = ''
   conversionRate.value = 0
+  conversionRateDisplay.value = ''
   receiptFile.value = null
   if (fileInputRef.value) fileInputRef.value.value = ''
   if (cameraInputRef.value) cameraInputRef.value.value = ''
