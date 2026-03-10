@@ -290,9 +290,25 @@
                   :readonly="isKmCategory"
                   class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                   :class="{ 'bg-gray-50 cursor-not-allowed': isKmCategory }"
-                  placeholder="0,00" />
+                  placeholder="0,00"
+                  @input="onInlineAmountChange" />
                 <p v-if="isKmCategory" class="mt-1 text-xs text-gray-500">Calculado automaticamente: km × taxa/km</p>
                 <p v-if="isForeignCurrency && !isKmCategory" class="mt-1 text-xs text-gray-500">Valor sugerido pela conversão. Você pode editar.</p>
+              </div>
+              <div v-if="isForeignCurrency">
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Taxa de conversão
+                  <span class="text-gray-400 font-normal text-xs">(1 {{ itemForm.original_currency }} = ? BRL)</span>
+                </label>
+                <input
+                  v-model="itemForm.conversionRate"
+                  type="number"
+                  step="0.000001"
+                  min="0"
+                  class="w-full rounded-lg border border-blue-200 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                  placeholder="0.000000"
+                  @input="onInlineRateChange"
+                />
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Estabelecimento</label>
@@ -930,6 +946,10 @@ async function fetchConversion(amount: number, from: string, to: string) {
   }
 }
 
+let inlineAmountDebounceTimer: ReturnType<typeof setTimeout> | null = null
+let inlineRateDebounceTimer: ReturnType<typeof setTimeout> | null = null
+let inlineRecalcLock = false
+
 function triggerConversion() {
   if (conversionDebounceTimer) clearTimeout(conversionDebounceTimer)
   conversionDebounceTimer = setTimeout(async () => {
@@ -937,14 +957,52 @@ function triggerConversion() {
     if (amount <= 0 || !isForeignCurrency.value) return
     const data = await fetchConversion(amount, itemForm.value.original_currency, 'BRL')
     if (data) {
+      inlineRecalcLock = true
       itemForm.value.suggestedBrlAmount = String(data.brl_amount)
       itemForm.value.amountDisplay = String(data.brl_amount)
-      itemForm.value.conversionRate = String(data.conversion_rate)
+      itemForm.value.conversionRate = data.conversion_rate ? Number(data.conversion_rate).toFixed(6) : ''
       itemForm.value.currencyNote = data.note || ''
       const iof = Math.round(data.brl_amount * 3.5) / 100
       itemForm.value.iofAmount = iof.toFixed(2)
+      inlineRecalcLock = false
     }
   }, 500)
+}
+
+function onInlineAmountChange() {
+  if (!isForeignCurrency.value || inlineRecalcLock) return
+  if (inlineAmountDebounceTimer) clearTimeout(inlineAmountDebounceTimer)
+  inlineAmountDebounceTimer = setTimeout(() => {
+    const brl = parseFloat(itemForm.value.amountDisplay || '0')
+    const orig = parseFloat(itemForm.value.originalAmount || '0')
+    if (brl > 0 && orig > 0) {
+      inlineRecalcLock = true
+      const rate = brl / orig
+      itemForm.value.conversionRate = rate.toFixed(6)
+      itemForm.value.suggestedBrlAmount = String(brl)
+      itemForm.value.currencyNote = buildCurrencyNote(orig, itemForm.value.original_currency, rate)
+      itemForm.value.iofAmount = (brl * 0.035).toFixed(2)
+      inlineRecalcLock = false
+    }
+  }, 400)
+}
+
+function onInlineRateChange() {
+  if (!isForeignCurrency.value || inlineRecalcLock) return
+  if (inlineRateDebounceTimer) clearTimeout(inlineRateDebounceTimer)
+  inlineRateDebounceTimer = setTimeout(() => {
+    const rate = parseFloat(itemForm.value.conversionRate || '0')
+    const orig = parseFloat(itemForm.value.originalAmount || '0')
+    if (rate > 0 && orig > 0) {
+      inlineRecalcLock = true
+      const brl = orig * rate
+      itemForm.value.amountDisplay = brl.toFixed(2)
+      itemForm.value.suggestedBrlAmount = String(brl)
+      itemForm.value.currencyNote = buildCurrencyNote(orig, itemForm.value.original_currency, rate)
+      itemForm.value.iofAmount = (brl * 0.035).toFixed(2)
+      inlineRecalcLock = false
+    }
+  }, 400)
 }
 
 let editAmountDebounceTimer: ReturnType<typeof setTimeout> | null = null
