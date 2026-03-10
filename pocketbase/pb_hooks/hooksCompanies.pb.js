@@ -75,6 +75,7 @@ onRecordAfterCreateSuccess((e) => {
     { name: "Material", icon: "📦", color: "#eab308" },
     { name: "Quilometragem", icon: "🛣️", color: "#10b981" },
     { name: "Outros", icon: "📁", color: "#6b7280" },
+    { name: "Taxas", icon: "💱", color: "#f59e0b" },
   ]
 
   try {

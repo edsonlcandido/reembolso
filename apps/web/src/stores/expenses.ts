@@ -401,7 +401,7 @@ export const useExpensesStore = defineStore('expenses', () => {
     }
   }
 
-  async function addItem(data: { report: string; date?: string; category?: string; amount: number; description?: string; merchant?: string; notes?: string }) {
+  async function addItem(data: { report: string; date?: string; category?: string; amount: number; description?: string; merchant?: string; notes?: string; original_currency?: string; original_amount?: number; suggested_brl_amount?: number; conversion_rate?: number; currency_note?: string; km_quantity?: number }) {
     loading.value = true
     try {
       const record = await pb.collection('expense_items').create({
@@ -412,6 +412,31 @@ export const useExpensesStore = defineStore('expenses', () => {
       return { success: true, data: record }
     } catch (error: any) {
       return { success: false, error: error?.message || 'Erro ao adicionar item.' }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function addItemWithIOF(
+    mainItemData: { report: string; date?: string; category?: string; amount: number; description?: string; merchant?: string; notes?: string; original_currency?: string; original_amount?: number; suggested_brl_amount?: number; conversion_rate?: number; currency_note?: string; km_quantity?: number },
+    iofItemData: { report: string; date?: string; category?: string; amount: number; description?: string; merchant?: string; notes?: string }
+  ) {
+    loading.value = true
+    try {
+      const mainRecord = await pb.collection('expense_items').create({
+        ...mainItemData,
+        ocr_processed: false,
+      })
+
+      const iofRecord = await pb.collection('expense_items').create({
+        ...iofItemData,
+        ocr_processed: false,
+      })
+
+      await recalculateTotal(mainItemData.report)
+      return { success: true, data: { main: mainRecord, iof: iofRecord } }
+    } catch (error: any) {
+      return { success: false, error: error?.message || 'Erro ao adicionar item com IOF.' }
     } finally {
       loading.value = false
     }
@@ -478,6 +503,7 @@ export const useExpensesStore = defineStore('expenses', () => {
     deleteReport,
     fetchItems,
     addItem,
+    addItemWithIOF,
     updateItem,
     removeItem,
     recalculateTotal,

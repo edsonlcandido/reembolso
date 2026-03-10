@@ -234,8 +234,8 @@
                   :title="!receiptFile ? 'Selecione um comprovante primeiro' : 'Analisar comprovante com IA'"
                   class="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-violet-500 to-fuchsia-500 px-4 py-2 text-sm font-semibold text-white shadow hover:from-violet-600 hover:to-fuchsia-600 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  <svg v-if="!analyzingReceipt" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  <svg v-if="!analyzingReceipt" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
                   </svg>
                   <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 animate-spin" fill="none" style="animation-direction: reverse;" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -273,17 +273,62 @@
                 <p v-else class="mt-1 text-xs text-amber-600">Taxa por km não configurada na empresa.</p>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Moeda</label>
+                <select v-model="itemForm.original_currency" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                  <option v-for="cur in supportedCurrencies" :key="cur.code" :value="cur.code">{{ cur.label }}</option>
+                </select>
+              </div>
+              <div v-if="isForeignCurrency">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Valor ({{ itemForm.original_currency }}) <span class="text-red-500">*</span></label>
+                <input v-model="itemForm.originalAmount" type="number" step="0.01" min="0" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" placeholder="0,00" @input="triggerConversion" />
+                <p v-if="convertingCurrency" class="mt-1 text-xs text-blue-600">Convertendo...</p>
+                <p v-if="itemForm.currencyNote" class="mt-1 text-xs text-gray-500">{{ itemForm.currencyNote }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Valor <span class="text-red-500">*</span></label>
                 <input v-model="itemForm.amountDisplay" type="number" step="0.01" min="0" required
                   :readonly="isKmCategory"
                   class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                   :class="{ 'bg-gray-50 cursor-not-allowed': isKmCategory }"
-                  placeholder="0,00" />
+                  placeholder="0,00"
+                  @input="onInlineAmountChange" />
                 <p v-if="isKmCategory" class="mt-1 text-xs text-gray-500">Calculado automaticamente: km × taxa/km</p>
+                <p v-if="isForeignCurrency && !isKmCategory" class="mt-1 text-xs text-gray-500">Valor sugerido pela conversão. Você pode editar.</p>
+              </div>
+              <div v-if="isForeignCurrency">
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Taxa de conversão
+                  <span class="text-gray-400 font-normal text-xs">(1 {{ itemForm.original_currency }} = ? BRL)</span>
+                </label>
+                <input
+                  v-model="itemForm.conversionRate"
+                  type="number"
+                  step="0.000001"
+                  min="0"
+                  class="w-full rounded-lg border border-blue-200 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                  placeholder="0.000000"
+                  @input="onInlineRateChange"
+                />
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Estabelecimento</label>
                 <input v-model="itemForm.merchant" type="text" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" placeholder="Nome do estabelecimento" />
+              </div>
+            </div>
+            <div v-if="isForeignCurrency" class="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+              <div class="flex items-center gap-2">
+                <span class="text-amber-600 font-semibold text-sm">💱 IOF (3,5%)</span>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Valor IOF (R$)</label>
+                  <input v-model="itemForm.iofAmount" type="number" step="0.01" min="0" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" placeholder="0,00" />
+                  <p class="mt-1 text-xs text-gray-500">Calculado automaticamente (3,5% do valor em BRL). Você pode editar.</p>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Descrição IOF</label>
+                  <input :value="iofDescription" type="text" readonly class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 bg-gray-50 cursor-not-allowed focus:border-blue-500 focus:ring-2 focus:ring-blue-200" />
+                </div>
               </div>
             </div>
             <div>
@@ -341,6 +386,9 @@
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-3 mb-1">
                       <span class="font-semibold text-gray-900">{{ formatCurrency(item.amount || 0) }}</span>
+                      <span v-if="item.original_currency && item.original_currency !== 'BRL'" class="px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-xs font-medium">
+                        {{ item.original_currency }}
+                      </span>
                       <span v-if="item.category" class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
                         {{ categoryLabel(item.category) }}
                       </span>
@@ -348,6 +396,9 @@
                         Pago
                       </span>
                     </div>
+                    <p v-if="item.original_currency && item.original_currency !== 'BRL' && item.original_amount" class="text-sm text-amber-600">
+                      {{ item.currency_note || `${item.original_currency} ${Number(item.original_amount).toLocaleString('pt-BR')}` }}
+                    </p>
                     <p v-if="item.merchant" class="text-sm text-gray-600">{{ item.merchant }}</p>
                     <p v-if="item.description" class="text-sm text-gray-500">{{ item.description }}</p>
                     <p v-if="item.km" class="text-xs text-emerald-600 mt-0.5">🛣️ {{ item.km }} km</p>
@@ -650,7 +701,7 @@
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       @click.self="closeEditItemModal()"
     >
-      <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full mx-4">
+      <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
         <h3 class="text-lg font-bold text-gray-900 mb-4">Editar Despesa</h3>
         <form @submit.prevent="handleUpdateItem" class="space-y-4">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -678,18 +729,35 @@
               </p>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Valor</label>
               <input v-model="editItemForm.amountDisplay" type="number" step="0.01" min="0" required
                 :readonly="isEditKmCategory"
                 class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                 :class="{ 'bg-gray-50 cursor-not-allowed': isEditKmCategory }"
-                placeholder="0,00" />
+                placeholder="0,00"
+                @input="onEditAmountChange" />
               <p v-if="isEditKmCategory" class="mt-1 text-xs text-gray-500">Calculado automaticamente: km × taxa/km</p>
+              <p v-if="isEditForeignCurrency && !isEditKmCategory" class="mt-1 text-xs text-gray-500">Edite para recalcular a taxa de conversão.</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Estabelecimento</label>
               <input v-model="editItemForm.merchant" type="text" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" placeholder="Nome do estabelecimento" />
             </div>
+          </div>
+          <div v-if="isEditForeignCurrency" class="rounded-xl border border-blue-200 bg-blue-50 p-4 space-y-3">
+            <h4 class="text-sm font-semibold text-blue-800">Dados de moeda estrangeira ({{ editItemForm.original_currency }})</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-blue-700 mb-1">Valor original ({{ editItemForm.original_currency }})</label>
+                <input v-model="editItemForm.originalAmount" type="number" step="0.01" min="0" class="w-full rounded-lg border border-blue-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" placeholder="0,00" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-blue-700 mb-1">Taxa de conversão</label>
+                <input v-model="editItemForm.conversionRate" type="number" step="0.000001" min="0" class="w-full rounded-lg border border-blue-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" @input="onEditRateChange" />
+                <p class="mt-1 text-xs text-blue-600">Edite para recalcular o valor em BRL.</p>
+              </div>
+            </div>
+            <p v-if="editItemForm.currencyNote" class="text-xs text-blue-600">{{ editItemForm.currencyNote }}</p>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
@@ -698,6 +766,54 @@
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Observações</label>
             <textarea v-model="editItemForm.notes" rows="2" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" placeholder="Observações adicionais" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Comprovante</label>
+            <div class="rounded-xl border border-blue-100 bg-blue-50/50 p-3">
+              <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <button
+                  type="button"
+                  @click="openEditFilePicker"
+                  class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50 transition-all sm:w-auto"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 16V8m0 8l-3-3m3 3l3-3M4 16.5V18a2 2 0 002 2h12a2 2 0 002-2v-1.5M8 7V6a4 4 0 118 0v1" />
+                  </svg>
+                  Escolher arquivo
+                </button>
+                <button
+                  type="button"
+                  @click.prevent.stop="openEditCameraCapture"
+                  class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50 transition-all sm:w-auto"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h2l1.5-2h7L17 7h2a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <circle cx="12" cy="13" r="3" />
+                  </svg>
+                  Tirar foto
+                </button>
+              </div>
+              <p v-if="editReceiptFile" class="mt-2 text-sm text-emerald-700">
+                Arquivo: <span class="font-medium">{{ editReceiptFile.name }}</span>
+              </p>
+              <p v-else-if="editingItem?.receipt_image" class="mt-2 text-sm text-gray-500">
+                Comprovante atual: <span class="font-medium">{{ editingItem.receipt_image }}</span>
+              </p>
+            </div>
+            <input ref="editFileInputRef" type="file" accept="image/*" @change="handleEditFileChange" class="hidden" />
+            <input ref="editCameraInputRef" type="file" accept="image/*" capture="environment" @change="handleEditCameraChange" class="hidden" />
+            <button
+              type="button"
+              :disabled="!editReceiptFile || analyzingEditReceipt"
+              @click="analyzeWithAIForEdit"
+              class="mt-2 inline-flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-semibold text-white shadow transition-all disabled:opacity-40"
+              :class="editReceiptFile && !analyzingEditReceipt ? 'bg-gradient-to-r from-purple-400 to-pink-400 hover:from-purple-500 hover:to-pink-500' : 'bg-gradient-to-r from-purple-300 to-pink-300 cursor-not-allowed'"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
+              </svg>
+              {{ analyzingEditReceipt ? 'Analisando...' : 'Analisar com IA' }}
+            </button>
           </div>
           <div class="flex gap-3 justify-end">
             <button
@@ -752,7 +868,11 @@ const returnReason = ref('')
 const receiptFile = ref<File | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const cameraInputRef = ref<HTMLInputElement | null>(null)
+const editReceiptFile = ref<File | null>(null)
+const editFileInputRef = ref<HTMLInputElement | null>(null)
+const editCameraInputRef = ref<HTMLInputElement | null>(null)
 const analyzingReceipt = ref(false)
+const analyzingEditReceipt = ref(false)
 const submitting = ref(false)
 const notifying = ref(false)
 const categories = ref<RecordModel[]>([])
@@ -767,6 +887,11 @@ const editItemForm = ref({
   description: '',
   notes: '',
   km: '',
+  original_currency: 'BRL',
+  originalAmount: '',
+  suggestedBrlAmount: '',
+  conversionRate: '',
+  currencyNote: '',
 })
 
 const itemForm = ref({
@@ -777,7 +902,155 @@ const itemForm = ref({
   description: '',
   notes: '',
   km: '',
+  original_currency: 'BRL',
+  originalAmount: '',
+  suggestedBrlAmount: '',
+  conversionRate: '',
+  currencyNote: '',
+  iofAmount: '',
 })
+
+const convertingCurrency = ref(false)
+let conversionDebounceTimer: ReturnType<typeof setTimeout> | null = null
+
+const isForeignCurrency = computed(() => itemForm.value.original_currency !== 'BRL')
+const isEditForeignCurrency = computed(() => editItemForm.value.original_currency !== '' && editItemForm.value.original_currency !== 'BRL')
+
+const supportedCurrencies = [
+  { code: 'BRL', label: '🇧🇷 BRL - Real' },
+  { code: 'USD', label: '🇺🇸 USD - Dólar' },
+  { code: 'EUR', label: '🇪🇺 EUR - Euro' },
+  { code: 'CLP', label: '🇨🇱 CLP - Peso Chileno' },
+]
+
+const iofDescription = computed(() => {
+  const orig = parseFloat(itemForm.value.originalAmount || '0')
+  const cur = itemForm.value.original_currency
+  if (orig > 0 && cur && cur !== 'BRL') return `IOF compra ${orig} ${cur}`
+  return ''
+})
+
+async function fetchConversion(amount: number, from: string, to: string) {
+  try {
+    convertingCurrency.value = true
+    const data = await pb.send('/api/currency/convert', {
+      method: 'POST',
+      body: { amount, from, to },
+    })
+    return data
+  } catch (err: any) {
+    errorMsg.value = err?.message || 'Erro ao converter moeda.'
+    return null
+  } finally {
+    convertingCurrency.value = false
+  }
+}
+
+let inlineAmountDebounceTimer: ReturnType<typeof setTimeout> | null = null
+let inlineRateDebounceTimer: ReturnType<typeof setTimeout> | null = null
+let inlineRecalcLock = false
+
+function triggerConversion() {
+  if (conversionDebounceTimer) clearTimeout(conversionDebounceTimer)
+  conversionDebounceTimer = setTimeout(async () => {
+    const amount = parseFloat(itemForm.value.originalAmount || '0')
+    if (amount <= 0 || !isForeignCurrency.value) return
+    const data = await fetchConversion(amount, itemForm.value.original_currency, 'BRL')
+    if (data) {
+      inlineRecalcLock = true
+      itemForm.value.suggestedBrlAmount = String(data.brl_amount)
+      itemForm.value.amountDisplay = String(data.brl_amount)
+      itemForm.value.conversionRate = data.conversion_rate ? Number(data.conversion_rate).toFixed(6) : ''
+      itemForm.value.currencyNote = data.note || ''
+      const iof = Math.round(data.brl_amount * 3.5) / 100
+      itemForm.value.iofAmount = iof.toFixed(2)
+      inlineRecalcLock = false
+    }
+  }, 500)
+}
+
+function onInlineAmountChange() {
+  if (!isForeignCurrency.value || inlineRecalcLock) return
+  if (inlineAmountDebounceTimer) clearTimeout(inlineAmountDebounceTimer)
+  inlineAmountDebounceTimer = setTimeout(() => {
+    const brl = parseFloat(itemForm.value.amountDisplay || '0')
+    const orig = parseFloat(itemForm.value.originalAmount || '0')
+    if (brl > 0 && orig > 0) {
+      inlineRecalcLock = true
+      const rate = brl / orig
+      itemForm.value.conversionRate = rate.toFixed(6)
+      itemForm.value.suggestedBrlAmount = String(brl)
+      itemForm.value.currencyNote = buildCurrencyNote(orig, itemForm.value.original_currency, rate)
+      itemForm.value.iofAmount = (brl * 0.035).toFixed(2)
+      inlineRecalcLock = false
+    }
+  }, 400)
+}
+
+function onInlineRateChange() {
+  if (!isForeignCurrency.value || inlineRecalcLock) return
+  if (inlineRateDebounceTimer) clearTimeout(inlineRateDebounceTimer)
+  inlineRateDebounceTimer = setTimeout(() => {
+    const rate = parseFloat(itemForm.value.conversionRate || '0')
+    const orig = parseFloat(itemForm.value.originalAmount || '0')
+    if (rate > 0 && orig > 0) {
+      inlineRecalcLock = true
+      const brl = orig * rate
+      itemForm.value.amountDisplay = brl.toFixed(2)
+      itemForm.value.suggestedBrlAmount = String(brl)
+      itemForm.value.currencyNote = buildCurrencyNote(orig, itemForm.value.original_currency, rate)
+      itemForm.value.iofAmount = (brl * 0.035).toFixed(2)
+      inlineRecalcLock = false
+    }
+  }, 400)
+}
+
+let editAmountDebounceTimer: ReturnType<typeof setTimeout> | null = null
+let editRateDebounceTimer: ReturnType<typeof setTimeout> | null = null
+let editRecalcLock = false
+
+function buildCurrencyNote(orig: number, cur: string, rate: number): string {
+  return `Compra em ${cur} ${orig} (taxa: 1 ${cur} = ${rate.toFixed(6)} BRL)`
+}
+
+function onEditAmountChange() {
+  if (!isEditForeignCurrency.value || editRecalcLock) return
+  if (editAmountDebounceTimer) clearTimeout(editAmountDebounceTimer)
+  editAmountDebounceTimer = setTimeout(() => {
+    const brl = parseFloat(editItemForm.value.amountDisplay || '0')
+    const orig = parseFloat(editItemForm.value.originalAmount || '0')
+    if (brl > 0 && orig > 0) {
+      editRecalcLock = true
+      const rate = brl / orig
+      editItemForm.value.conversionRate = rate.toFixed(6)
+      editItemForm.value.suggestedBrlAmount = String(brl)
+      editItemForm.value.currencyNote = buildCurrencyNote(orig, editItemForm.value.original_currency, rate)
+      editRecalcLock = false
+    }
+  }, 400)
+}
+
+function onEditRateChange() {
+  if (!isEditForeignCurrency.value || editRecalcLock) return
+  if (editRateDebounceTimer) clearTimeout(editRateDebounceTimer)
+  editRateDebounceTimer = setTimeout(() => {
+    const rate = parseFloat(editItemForm.value.conversionRate || '0')
+    const orig = parseFloat(editItemForm.value.originalAmount || '0')
+    if (rate > 0 && orig > 0) {
+      editRecalcLock = true
+      const brl = orig * rate
+      editItemForm.value.amountDisplay = brl.toFixed(2)
+      editItemForm.value.suggestedBrlAmount = String(brl)
+      editItemForm.value.currencyNote = buildCurrencyNote(orig, editItemForm.value.original_currency, rate)
+      editRecalcLock = false
+    }
+  }, 400)
+}
+
+function findTaxesCategoryId(): string {
+  const cat = categories.value.find(c => c.name?.toLowerCase() === 'taxas')
+  return cat?.id || ''
+}
 
 const report = computed(() => expensesStore.currentReport)
 
@@ -1008,6 +1281,24 @@ function openCameraCapture(e?: Event) {
   cameraInputRef.value?.click()
 }
 
+function handleEditFileChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  if (input.files && input.files[0]) editReceiptFile.value = input.files[0]
+}
+
+function handleEditCameraChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  if (input.files && input.files[0]) editReceiptFile.value = input.files[0]
+}
+
+function openEditFilePicker() { editFileInputRef.value?.click() }
+
+function openEditCameraCapture(e?: Event) {
+  e?.preventDefault()
+  e?.stopPropagation()
+  editCameraInputRef.value?.click()
+}
+
 async function analyzeWithAI() {
   if (!receiptFile.value) return
 
@@ -1045,8 +1336,40 @@ async function analyzeWithAI() {
   }
 }
 
+async function analyzeWithAIForEdit() {
+  if (!editReceiptFile.value) return
+  analyzingEditReceipt.value = true
+  errorMsg.value = ''
+  try {
+    const base64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = (ev) => {
+        const dataUrl = ev.target?.result as string
+        resolve(dataUrl.split(',')[1])
+      }
+      reader.onerror = reject
+      reader.readAsDataURL(editReceiptFile.value!)
+    })
+    const data = await pb.send('/api/ai/read-receipt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageBase64: base64, mimeType: editReceiptFile.value.type || 'image/jpeg', companyId: companyStore.currentCompany?.id || '' }),
+    })
+    if (data.date) editItemForm.value.date = data.date
+    if (data.amount != null) editItemForm.value.amountDisplay = String(data.amount)
+    if (data.merchant) editItemForm.value.merchant = data.merchant
+    if (data.category) editItemForm.value.category = resolveAICategory(data.category)
+    if (data.description) editItemForm.value.description = data.description
+    successMsg.value = 'Dados extraídos pela IA! Revise os campos e salve.'
+  } catch (err: any) {
+    errorMsg.value = err?.message || 'Erro ao analisar comprovante com IA.'
+  } finally {
+    analyzingEditReceipt.value = false
+  }
+}
+
 function resetItemForm() {
-  itemForm.value = { date: '', category: '', amountDisplay: '', merchant: '', description: '', notes: '', km: '' }
+  itemForm.value = { date: '', category: '', amountDisplay: '', merchant: '', description: '', notes: '', km: '', original_currency: 'BRL', originalAmount: '', suggestedBrlAmount: '', conversionRate: '', currencyNote: '', iofAmount: '' }
   receiptFile.value = null
   if (fileInputRef.value) fileInputRef.value.value = ''
   if (cameraInputRef.value) cameraInputRef.value.value = ''
@@ -1076,8 +1399,35 @@ async function handleAddItem() {
     km: isKmCategory.value && itemForm.value.km ? parseFloat(itemForm.value.km) : undefined,
   }
 
+  if (isForeignCurrency.value) {
+    data.original_currency = itemForm.value.original_currency
+    data.original_amount = parseFloat(itemForm.value.originalAmount || '0')
+    data.suggested_brl_amount = amountCents
+    data.conversion_rate = parseFloat(itemForm.value.conversionRate || '0')
+    data.currency_note = itemForm.value.currencyNote || ''
+  }
+
   try {
-    if (receiptFile.value) {
+    if (isForeignCurrency.value && !receiptFile.value) {
+      const iofAmountCents = Math.round(parseFloat(itemForm.value.iofAmount || '0') * 100)
+      const originalAmt = itemForm.value.originalAmount || '0'
+      const iofData = {
+        report: report.value.id,
+        amount: iofAmountCents,
+        date: itemForm.value.date || undefined,
+        category: findTaxesCategoryId() || undefined,
+        description: `IOF compra ${originalAmt} ${itemForm.value.original_currency}`,
+      }
+      const result = await expensesStore.addItemWithIOF(data, iofData)
+      if (result.success) {
+        await loadReport()
+        successMsg.value = 'Despesa e IOF adicionados com sucesso!'
+        showItemForm.value = false
+        resetItemForm()
+      } else {
+        errorMsg.value = result.error || 'Erro ao adicionar despesa.'
+      }
+    } else if (receiptFile.value) {
       const formData = new FormData()
       Object.entries(data).forEach(([key, value]) => {
         if (value !== undefined) formData.append(key, String(value))
@@ -1085,6 +1435,19 @@ async function handleAddItem() {
       formData.append('receipt_image', receiptFile.value)
       await pb.collection('expense_items').create(formData)
       await expensesStore.recalculateTotal(report.value.id)
+
+      if (isForeignCurrency.value) {
+        const iofAmountCents = Math.round(parseFloat(itemForm.value.iofAmount || '0') * 100)
+        const originalAmt = itemForm.value.originalAmount || '0'
+        await expensesStore.addItem({
+          report: report.value.id,
+          amount: iofAmountCents,
+          date: itemForm.value.date || undefined,
+          category: findTaxesCategoryId() || undefined,
+          description: `IOF compra ${originalAmt} ${itemForm.value.original_currency}`,
+        })
+      }
+
       await loadReport()
       successMsg.value = 'Despesa adicionada com sucesso!'
       showItemForm.value = false
@@ -1135,6 +1498,11 @@ function openEditItemModal(item: RecordModel) {
     description: item.description || '',
     notes: item.notes || '',
     km: item.km ? String(item.km) : '',
+    original_currency: item.original_currency || 'BRL',
+    originalAmount: item.original_amount ? String(item.original_amount) : '',
+    suggestedBrlAmount: item.suggested_brl_amount ? String(item.suggested_brl_amount / 100) : '',
+    conversionRate: item.conversion_rate ? String(item.conversion_rate) : '',
+    currencyNote: item.currency_note || '',
   }
   showEditItemModal.value = true
 }
@@ -1142,6 +1510,9 @@ function openEditItemModal(item: RecordModel) {
 function closeEditItemModal() {
   showEditItemModal.value = false
   editingItem.value = null
+  editReceiptFile.value = null
+  if (editFileInputRef.value) editFileInputRef.value.value = ''
+  if (editCameraInputRef.value) editCameraInputRef.value.value = ''
 }
 
 async function handleUpdateItem() {
@@ -1157,7 +1528,7 @@ async function handleUpdateItem() {
 
   submitting.value = true
   try {
-    const result = await expensesStore.updateItem(editingItem.value.id, {
+    const updateData: Record<string, any> = {
       amount: amountCents,
       date: editItemForm.value.date || undefined,
       category: editItemForm.value.category || undefined,
@@ -1165,7 +1536,31 @@ async function handleUpdateItem() {
       description: editItemForm.value.description || undefined,
       notes: editItemForm.value.notes || undefined,
       km: isEditKmCategory.value && editItemForm.value.km ? parseFloat(editItemForm.value.km) : undefined,
-    })
+    }
+
+    if (isEditForeignCurrency.value) {
+      updateData.original_currency = editItemForm.value.original_currency
+      updateData.original_amount = parseFloat(editItemForm.value.originalAmount || '0')
+      updateData.suggested_brl_amount = amountCents
+      updateData.conversion_rate = parseFloat(editItemForm.value.conversionRate || '0')
+      updateData.currency_note = editItemForm.value.currencyNote || ''
+    } else {
+      updateData.original_currency = 'BRL'
+      updateData.original_amount = 0
+      updateData.suggested_brl_amount = 0
+      updateData.conversion_rate = 0
+      updateData.currency_note = ''
+    }
+
+    let result
+    if (editReceiptFile.value) {
+      const formData = new FormData()
+      Object.entries(updateData).forEach(([k, v]) => { if (v !== undefined) formData.append(k, String(v)) })
+      formData.append('receipt_image', editReceiptFile.value)
+      result = await expensesStore.updateItem(editingItem.value.id, formData)
+    } else {
+      result = await expensesStore.updateItem(editingItem.value.id, updateData)
+    }
     if (result.success) {
       successMsg.value = 'Despesa atualizada com sucesso!'
       closeEditItemModal()

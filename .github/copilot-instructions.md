@@ -151,3 +151,65 @@ Acesse no código com: `import.meta.env.VITE_POCKETBASE_URL`
 | Usuário deletado permanece logado | Não chama `authRefresh()` | Implementar no router guard |
 | Login não redireciona | Sem `await nextTick()` | Adicionar entre auth e push |
 | `npm ci` falha no Docker | `package-lock.json` no gitignore | Usar `npm install` ou desbloquear arquivo |
+| `ReferenceError: X is not defined` no hook | Variável declarada no escopo do arquivo não é global no goja | Declarar a variável dentro da função |
+| `Something went wrong` ao salvar registro | `Array.includes()` ou `Intl` usados em hook (não suportados no goja ES5.1) | Usar `indexOf() !== -1` e concatenação simples |
+
+## 🔴 JSVM - Limitações do Runtime goja (ES5.1)
+
+O runtime JavaScript dos hooks do PocketBase é baseado em **goja (ES5.1)**. Há restrições importantes:
+
+### Variáveis de arquivo não são globais
+
+Variáveis declaradas no escopo do arquivo (`const`, `let`, `var`) **não ficam visíveis dentro de funções nomeadas** — causam `ReferenceError`.
+
+```javascript
+// ❌ ERRADO — causa ReferenceError dentro da função
+const CURRENCIES = ["BRL", "USD"]
+function validate(e) {
+  if (CURRENCIES.indexOf("USD") !== -1) { ... } // ReferenceError!
+}
+
+// ✅ CORRETO — declarar dentro da função
+function validate(e) {
+  const currencies = ["BRL", "USD"]
+  if (currencies.indexOf("USD") !== -1) { ... }
+}
+```
+
+### Métodos ES2016+ não suportados
+
+```javascript
+// ❌ ERRADO
+arr.includes("valor")           // Array.prototype.includes não existe no ES5.1
+(123456).toLocaleString("pt-BR") // Intl não disponível no goja
+
+// ✅ CORRETO
+arr.indexOf("valor") !== -1
+String(123456)
+```
+
+### Registro de hooks de coleção
+
+```javascript
+// ✅ Correto (sem sufixo "Request")
+onRecordCreate(handler, "nome_colecao")
+onRecordUpdate(handler, "nome_colecao")
+onRecordAfterCreateSuccess(handler, "nome_colecao")
+
+// ⚠️ Evitar (pode ter comportamento diferente no v0.36)
+onRecordCreateRequest(handler, "nome_colecao")
+```
+
+### Body em `routerAdd` — tipar com segurança
+
+O SDK do PocketBase pode enviar `amount` como string ou número. Sempre use `parseFloat()`/`parseInt()`:
+
+```javascript
+routerAdd("POST", "/api/endpoint", (e) => {
+  const body = e.requestInfo().body
+  const amount = parseFloat(body.amount) // não confie no tipo
+  if (isNaN(amount) || amount <= 0) {
+    return e.json(400, { error: "Valor inválido" })
+  }
+}, $apis.requireAuth())
+```

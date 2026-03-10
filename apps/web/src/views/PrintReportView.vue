@@ -64,7 +64,10 @@
               </div>
               <div v-if="report?.advance_amount" class="info-item">
                 <span class="info-label">Adiantamento</span>
-                <span class="info-value">{{ formatCurrency(report.advance_amount) }}</span>
+                <span class="info-value">
+                  {{ formatCurrency(report.advance_amount) }}
+                  <span v-if="report.advance_date" class="info-subvalue">em {{ formatDate(report.advance_date) }}</span>
+                </span>
               </div>
             </div>
           </div>
@@ -95,7 +98,12 @@
                 <td class="col-date">{{ formatDate(item.date) }}</td>
                 <td>{{ item.merchant || '—' }}</td>
                 <td class="col-cat">{{ categoryName(item.category) }}</td>
-                <td class="col-desc">{{ item.description || item.notes || '—' }}</td>
+                <td class="col-desc">
+                  {{ item.description || item.notes || '—' }}
+                  <div v-if="item.original_currency && item.original_currency !== 'BRL'" class="currency-note">
+                    {{ item.currency_note || `${item.original_currency} ${Number(item.original_amount || 0).toLocaleString('pt-BR')}` }}
+                  </div>
+                </td>
                 <td class="col-amount">{{ formatCurrency(item.amount) }}</td>
                 <td class="col-receipt-icon">
                   <svg v-if="!item.receipt_image && !item._imageUrl" class="no-receipt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -137,7 +145,10 @@
                 <td class="col-amount">{{ formatCurrency(report?.total_amount || 0) }}</td>
               </tr>
               <tr v-if="report?.advance_amount" class="foot-sub">
-                <td colspan="2">Adiantamento concedido</td>
+                <td colspan="2">
+                  Adiantamento concedido
+                  <span v-if="report.advance_date" class="foot-sub-date">em {{ formatDate(report.advance_date) }}</span>
+                </td>
                 <td class="col-amount">{{ formatCurrency(report.advance_amount) }}</td>
               </tr>
               <tr v-if="report?.advance_amount" class="foot-balance">
@@ -389,8 +400,9 @@ function loadMockData() {
     period_end: '2025-04-05T00:00:00.000Z',
     cost_center: 'Comercial',
     project: 'Expansão SP',
-    total_amount: 96980,
+    total_amount: 180712,
     advance_amount: 30000,
+    advance_date: '2025-03-28',
     company: '',
   } as any
 
@@ -400,6 +412,7 @@ function loadMockData() {
     { id: 'cat3', name: 'Hospedagem', icon: '🏨' },
     { id: 'cat4', name: 'Material', icon: '📦' },
     { id: 'cat5', name: 'Quilometragem', icon: '📍' },
+    { id: 'cat6', name: 'Taxas', icon: '💱' },
   ] as any[]
 
   const sampleImg = '/app/receipt-sample.png'
@@ -411,6 +424,10 @@ function loadMockData() {
     { id: '5', date: '2025-04-03T00:00:00Z', merchant: 'Restaurante Sabor & Cia', category: 'cat1', description: 'Jantar com equipe', amount: 21400, receipt_image: 'mock', _imageUrl: sampleImg },
     { id: '6', date: '2025-04-03T00:00:00Z', merchant: '', category: 'cat5', description: 'Visita ao cliente ABC — ida e volta (45 km)', amount: 6750, km: 45, receipt_image: '', _imageUrl: '' },
     { id: '7', date: '2025-04-04T00:00:00Z', merchant: 'Uber', category: 'cat2', description: 'Deslocamento interno', amount: 2300, receipt_image: '', _imageUrl: '' },
+    { id: '8', date: '2025-04-04T00:00:00Z', merchant: 'Restaurant Santiago', category: 'cat1', description: 'Jantar com parceiro', amount: 18900, original_currency: 'CLP', original_amount: 27000, conversion_rate: 0.007, currency_note: 'Compra em CLP 27.000', receipt_image: 'mock', _imageUrl: sampleImg },
+    { id: '9', date: '2025-04-04T00:00:00Z', merchant: '', category: 'cat6', description: 'IOF compra 27000 CLP', amount: 662, receipt_image: '', _imageUrl: '' },
+    { id: '10', date: '2025-04-05T00:00:00Z', merchant: 'Hotel Miami', category: 'cat3', description: 'Hospedagem 1 noite', amount: 62000, original_currency: 'USD', original_amount: 120, conversion_rate: 5.17, currency_note: 'Compra em USD 120.00', receipt_image: 'mock', _imageUrl: sampleImg },
+    { id: '11', date: '2025-04-05T00:00:00Z', merchant: '', category: 'cat6', description: 'IOF compra 120 USD', amount: 2170, receipt_image: '', _imageUrl: '' },
   ] as any[]
 
   approvalActions.value = [
@@ -643,6 +660,7 @@ onMounted(async () => {
 .info-item { display: flex; flex-direction: column; gap: 1px; }
 .info-label { font-size: 10px; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.06em; }
 .info-value { font-size: 12px; font-weight: 600; color: #374151; }
+.info-subvalue { font-size: 10px; font-weight: 400; color: #6b7280; margin-left: 4px; }
 
 /* Intro box */
 .intro-box {
@@ -722,6 +740,7 @@ onMounted(async () => {
   font-size: 11px;
 }
 .col-desc { color: #6b7280; font-size: 11px; }
+.currency-note { font-size: 9px; color: #9ca3af; margin-top: 2px; }
 .empty-row { text-align: center; color: #9ca3af; font-style: italic; padding: 16px; }
 
 .summary-table .foot-total td {
@@ -738,6 +757,7 @@ onMounted(async () => {
   color: #6b7280;
   border-bottom: none;
 }
+.foot-sub-date { font-size: 10px; color: #9ca3af; margin-left: 4px; }
 
 .summary-table .foot-balance td {
   font-weight: 800;
