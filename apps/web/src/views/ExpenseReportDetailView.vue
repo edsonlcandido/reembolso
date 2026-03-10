@@ -753,12 +753,12 @@
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Comprovante</label>
-            <div class="rounded-xl border border-blue-100 bg-white p-3">
+            <div class="rounded-xl border border-blue-100 bg-blue-50/50 p-3">
               <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <button
                   type="button"
                   @click="openEditFilePicker"
-                  class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 transition-all sm:w-auto"
+                  class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50 transition-all sm:w-auto"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 16V8m0 8l-3-3m3 3l3-3M4 16.5V18a2 2 0 002 2h12a2 2 0 002-2v-1.5M8 7V6a4 4 0 118 0v1" />
@@ -768,7 +768,7 @@
                 <button
                   type="button"
                   @click.prevent.stop="openEditCameraCapture"
-                  class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 transition-all sm:w-auto"
+                  class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50 transition-all sm:w-auto"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h2l1.5-2h7L17 7h2a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
@@ -777,15 +777,27 @@
                   Tirar foto
                 </button>
               </div>
+              <p v-if="editReceiptFile" class="mt-2 text-sm text-emerald-700">
+                Arquivo: <span class="font-medium">{{ editReceiptFile.name }}</span>
+              </p>
+              <p v-else-if="editingItem?.receipt_image" class="mt-2 text-sm text-gray-500">
+                Comprovante atual: <span class="font-medium">{{ editingItem.receipt_image }}</span>
+              </p>
             </div>
             <input ref="editFileInputRef" type="file" accept="image/*" @change="handleEditFileChange" class="hidden" />
             <input ref="editCameraInputRef" type="file" accept="image/*" capture="environment" @change="handleEditCameraChange" class="hidden" />
-            <p v-if="editReceiptFile" class="mt-2 text-sm text-emerald-700">
-              Novo comprovante selecionado: <span class="font-medium">{{ editReceiptFile.name }}</span>
-            </p>
-            <p v-else-if="editingItem?.receipt_image" class="mt-2 text-sm text-gray-500">
-              Comprovante atual: <span class="font-medium">{{ editingItem.receipt_image }}</span>
-            </p>
+            <button
+              type="button"
+              :disabled="!editReceiptFile || analyzingEditReceipt"
+              @click="analyzeWithAIForEdit"
+              class="mt-2 inline-flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-semibold text-white shadow transition-all disabled:opacity-40"
+              :class="editReceiptFile && !analyzingEditReceipt ? 'bg-gradient-to-r from-purple-400 to-pink-400 hover:from-purple-500 hover:to-pink-500' : 'bg-gradient-to-r from-purple-300 to-pink-300 cursor-not-allowed'"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+              {{ analyzingEditReceipt ? 'Analisando...' : 'Analisar com IA' }}
+            </button>
           </div>
           <div class="flex gap-3 justify-end">
             <button
@@ -844,6 +856,7 @@ const editReceiptFile = ref<File | null>(null)
 const editFileInputRef = ref<HTMLInputElement | null>(null)
 const editCameraInputRef = ref<HTMLInputElement | null>(null)
 const analyzingReceipt = ref(false)
+const analyzingEditReceipt = ref(false)
 const submitting = ref(false)
 const notifying = ref(false)
 const categories = ref<RecordModel[]>([])
@@ -1262,6 +1275,38 @@ async function analyzeWithAI() {
     errorMsg.value = err?.message || 'Erro ao analisar comprovante com IA.'
   } finally {
     analyzingReceipt.value = false
+  }
+}
+
+async function analyzeWithAIForEdit() {
+  if (!editReceiptFile.value) return
+  analyzingEditReceipt.value = true
+  errorMsg.value = ''
+  try {
+    const base64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = (ev) => {
+        const dataUrl = ev.target?.result as string
+        resolve(dataUrl.split(',')[1])
+      }
+      reader.onerror = reject
+      reader.readAsDataURL(editReceiptFile.value!)
+    })
+    const data = await pb.send('/api/ai/read-receipt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageBase64: base64, mimeType: editReceiptFile.value.type || 'image/jpeg', companyId: companyStore.currentCompany?.id || '' }),
+    })
+    if (data.date) editItemForm.value.date = data.date
+    if (data.amount != null) editItemForm.value.amountDisplay = String(data.amount)
+    if (data.merchant) editItemForm.value.merchant = data.merchant
+    if (data.category) editItemForm.value.category = resolveAICategory(data.category)
+    if (data.description) editItemForm.value.description = data.description
+    successMsg.value = 'Dados extraídos pela IA! Revise os campos e salve.'
+  } catch (err: any) {
+    errorMsg.value = err?.message || 'Erro ao analisar comprovante com IA.'
+  } finally {
+    analyzingEditReceipt.value = false
   }
 }
 
