@@ -38,8 +38,20 @@
             placeholder="slug-da-empresa"
             @input="validateSlug"
           />
-          <p class="mt-1 text-sm text-gray-500">
-            URL de acesso: /app/companies/{{ form.slug || 'slug-da-empresa' }}
+          <p class="mt-1 text-sm text-gray-500 flex items-center gap-1">
+            <span>URL de acesso: /app/companies/{{ form.slug || 'slug-da-empresa' }}</span>
+            <a
+              v-if="form.slug && !slugError"
+              :href="`/companies/${form.slug}`"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex items-center text-blue-500 hover:text-blue-700 transition-colors"
+              title="Abrir página de login da empresa"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+              </svg>
+            </a>
           </p>
           <p v-if="slugError" class="mt-1 text-sm text-red-500">{{ slugError }}</p>
         </div>
