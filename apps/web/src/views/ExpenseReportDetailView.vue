@@ -796,18 +796,12 @@
                   Tirar foto
                 </button>
               </div>
-              <div v-if="editReceiptPreviewUrl" class="mt-3">
-                <a :href="editReceiptPreviewUrl" target="_blank" rel="noopener noreferrer" class="inline-block">
-                  <img :src="editReceiptPreviewUrl" class="max-h-40 rounded-lg border border-gray-200 shadow-sm object-contain hover:shadow-md transition-shadow" />
-                </a>
-                <p class="text-xs text-emerald-700 mt-1">{{ editReceiptFile?.name }}</p>
-              </div>
-              <div v-else-if="editingItem?.receipt_image" class="mt-3">
-                <a :href="getFileUrl(editingItem)" target="_blank" rel="noopener noreferrer" class="inline-block">
-                  <img :src="getFileUrl(editingItem)" class="max-h-40 rounded-lg border border-gray-200 shadow-sm object-contain hover:shadow-md transition-shadow" />
-                </a>
-                <p class="text-xs text-gray-500 mt-1">Comprovante atual: {{ editingItem.receipt_image }}</p>
-              </div>
+              <p v-if="editReceiptFile" class="mt-2 text-sm text-emerald-700">
+                Arquivo: <span class="font-medium">{{ editReceiptFile.name }}</span>
+              </p>
+              <p v-else-if="editingItem?.receipt_image" class="mt-2 text-sm text-gray-500">
+                Comprovante atual: <span class="font-medium">{{ editingItem.receipt_image }}</span>
+              </p>
             </div>
             <input ref="editFileInputRef" type="file" accept="image/*" @change="handleEditFileChange" class="hidden" />
             <input ref="editCameraInputRef" type="file" accept="image/*" capture="environment" @change="handleEditCameraChange" class="hidden" />
@@ -879,7 +873,6 @@ const receiptPreviewUrl = ref<string | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const cameraInputRef = ref<HTMLInputElement | null>(null)
 const editReceiptFile = ref<File | null>(null)
-const editReceiptPreviewUrl = ref<string | null>(null)
 const editFileInputRef = ref<HTMLInputElement | null>(null)
 const editCameraInputRef = ref<HTMLInputElement | null>(null)
 const analyzingReceipt = ref(false)
@@ -1306,18 +1299,12 @@ function openCameraCapture(e?: Event) {
 
 function handleEditFileChange(e: Event) {
   const input = e.target as HTMLInputElement
-  if (input.files && input.files[0]) {
-    editReceiptFile.value = input.files[0]
-    setReceiptPreview(input.files[0], 'edit')
-  }
+  if (input.files && input.files[0]) editReceiptFile.value = input.files[0]
 }
 
 function handleEditCameraChange(e: Event) {
   const input = e.target as HTMLInputElement
-  if (input.files && input.files[0]) {
-    editReceiptFile.value = input.files[0]
-    setReceiptPreview(input.files[0], 'edit')
-  }
+  if (input.files && input.files[0]) editReceiptFile.value = input.files[0]
 }
 
 function openEditFilePicker() { editFileInputRef.value?.click() }
@@ -1541,7 +1528,6 @@ function closeEditItemModal() {
   showEditItemModal.value = false
   editingItem.value = null
   editReceiptFile.value = null
-  if (editReceiptPreviewUrl.value) { URL.revokeObjectURL(editReceiptPreviewUrl.value); editReceiptPreviewUrl.value = null }
   if (editFileInputRef.value) editFileInputRef.value.value = ''
   if (editCameraInputRef.value) editCameraInputRef.value.value = ''
 }
