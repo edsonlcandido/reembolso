@@ -209,6 +209,7 @@
 import { ref, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import pb from '../services/pocketbase'
+import { useCompanyStore } from '../stores/company'
 
 const route = useRoute()
 const router = useRouter()
@@ -256,6 +257,13 @@ async function handleLogin() {
         role: 'employee',
         active: true,
       })
+    }
+
+    const companyStore = useCompanyStore()
+    await companyStore.fetchMyCompanies()
+    const targetCompany = companyStore.companies.find(c => c.id === companyId.value)
+    if (targetCompany) {
+      companyStore.setCurrentCompany(targetCompany)
     }
 
     await nextTick()
