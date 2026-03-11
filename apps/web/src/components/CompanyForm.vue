@@ -42,7 +42,7 @@
             <span>URL de acesso: /app/companies/{{ form.slug || 'slug-da-empresa' }}</span>
             <a
               v-if="form.slug && !slugError"
-              :href="`/companies/${form.slug}`"
+              :href="`/app/companies/${form.slug}`"
               target="_blank"
               rel="noopener noreferrer"
               class="inline-flex items-center text-blue-500 hover:text-blue-700 transition-colors"

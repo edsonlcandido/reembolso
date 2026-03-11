@@ -30,7 +30,7 @@
             <p class="text-blue-100 text-sm mt-1 flex items-center gap-1">
               <span>/app/companies/{{ company.slug }}</span>
               <a
-                :href="`/companies/${company.slug}`"
+                :href="`/app/companies/${company.slug}`"
                 target="_blank"
                 rel="noopener noreferrer"
                 class="inline-flex items-center text-white/70 hover:text-white transition-colors"
