@@ -243,9 +243,12 @@
                   {{ analyzingReceipt ? 'Analisando...' : 'Analisar com IA' }}
                 </button>
               </div>
-              <p v-if="receiptFile" class="mt-2 text-sm text-emerald-700">
-                Comprovante pronto para envio: <span class="font-medium">{{ receiptFile.name }}</span>
-              </p>
+              <div v-if="receiptPreviewUrl" class="mt-3">
+                <a :href="receiptPreviewUrl" target="_blank" rel="noopener noreferrer" class="inline-block">
+                  <img :src="receiptPreviewUrl" class="max-h-40 rounded-lg border border-gray-200 shadow-sm object-contain hover:shadow-md transition-shadow" />
+                </a>
+                <p class="text-xs text-emerald-700 mt-1">{{ receiptFile?.name }}</p>
+              </div>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -866,6 +869,7 @@ const approverMembers = ref<RecordModel[]>([])
 const rejectionReason = ref('')
 const returnReason = ref('')
 const receiptFile = ref<File | null>(null)
+const receiptPreviewUrl = ref<string | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const cameraInputRef = ref<HTMLInputElement | null>(null)
 const editReceiptFile = ref<File | null>(null)
@@ -1253,10 +1257,21 @@ function closeReceiptDetailModal() {
   selectedReceiptItem.value = null
 }
 
+function setReceiptPreview(file: File, target: 'inline' | 'edit' = 'inline') {
+  if (target === 'inline') {
+    if (receiptPreviewUrl.value) URL.revokeObjectURL(receiptPreviewUrl.value)
+    receiptPreviewUrl.value = URL.createObjectURL(file)
+  } else {
+    if (editReceiptPreviewUrl.value) URL.revokeObjectURL(editReceiptPreviewUrl.value)
+    editReceiptPreviewUrl.value = URL.createObjectURL(file)
+  }
+}
+
 function handleFileChange(e: Event) {
   const input = e.target as HTMLInputElement
   if (input.files && input.files[0]) {
     receiptFile.value = input.files[0]
+    setReceiptPreview(input.files[0], 'inline')
     successMsg.value = 'Comprovante selecionado. Pronto para envio e análise.'
     errorMsg.value = ''
   }
@@ -1266,6 +1281,7 @@ function handleCameraChange(e: Event) {
   const input = e.target as HTMLInputElement
   if (input.files && input.files[0]) {
     receiptFile.value = input.files[0]
+    setReceiptPreview(input.files[0], 'inline')
     successMsg.value = 'Foto capturada com sucesso! Clique em Analisar com IA.'
     errorMsg.value = ''
   }
@@ -1371,6 +1387,7 @@ async function analyzeWithAIForEdit() {
 function resetItemForm() {
   itemForm.value = { date: '', category: '', amountDisplay: '', merchant: '', description: '', notes: '', km: '', original_currency: 'BRL', originalAmount: '', suggestedBrlAmount: '', conversionRate: '', currencyNote: '', iofAmount: '' }
   receiptFile.value = null
+  if (receiptPreviewUrl.value) { URL.revokeObjectURL(receiptPreviewUrl.value); receiptPreviewUrl.value = null }
   if (fileInputRef.value) fileInputRef.value.value = ''
   if (cameraInputRef.value) cameraInputRef.value.value = ''
 }
